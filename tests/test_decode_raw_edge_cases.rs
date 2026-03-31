@@ -45,3 +45,21 @@ fn test_decode_raw_zeroed_memory_returns_invalid_instruction() {
         })
     ));
 }
+
+#[test]
+fn test_decode_raw_cache_collision_keeps_distinct_pcs() {
+    let mut memory = SparseMemory::<u64>::new(0x1000000);
+    let pc1 = 0x1000u64;
+    let pc2 = pc1 + (1 << 13);
+    let i1 = 0x003100b3u64;
+    let i2 = 0x003160b3u64;
+
+    memory.store32(&pc1, &i1).unwrap();
+    memory.store32(&pc2, &i2).unwrap();
+
+    let mut decoder = DefaultDecoder::new::<u64>(ISA_IMC, VERSION1);
+    let d1 = decoder.decode_raw(&mut memory, pc1).unwrap();
+    let d2 = decoder.decode_raw(&mut memory, pc2).unwrap();
+
+    assert_ne!(d1, d2);
+}
