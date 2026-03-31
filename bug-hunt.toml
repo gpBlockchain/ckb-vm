@@ -1,0 +1,29 @@
+[testing]
+test_command = "cargo test --features asm"
+additional_commands = ["cargo clippy --features asm"]
+metric_pattern = "(\\d+) failed"
+metric_name = "failing_tests"
+timeout_seconds = 600
+
+[framework]
+name = "cargo-test"
+test_dir = "tests/"
+test_pattern = "test_*.rs"
+
+[scope]
+editable_tests = ["tests/"]
+readonly = ["src/", "definitions/", "build.rs"]
+branch_prefix = "bug-hunt"
+
+[run]
+tag = "mar31"
+max_iterations = 100
+context_history_limit = 20
+
+[coverage]
+enabled = false
+
+[strategy]
+learning_rate = 0.3
+weight_min = 0.2
+weight_max = 3.0

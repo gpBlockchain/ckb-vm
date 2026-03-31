@@ -1,0 +1,16 @@
+{
+  "test_types": {
+    "null-input":       { "written": 0, "bugs_found": 0, "weight": 1.0 },
+    "boundary":         { "written": 0, "bugs_found": 0, "weight": 1.0 },
+    "error-path":       { "written": 0, "bugs_found": 0, "weight": 1.0 },
+    "edge-case":        { "written": 0, "bugs_found": 0, "weight": 1.0 },
+    "concurrency":      { "written": 0, "bugs_found": 0, "weight": 1.0 },
+    "regression":       { "written": 0, "bugs_found": 0, "weight": 1.0 },
+    "malformed-input":  { "written": 0, "bugs_found": 0, "weight": 1.0 },
+    "state-corruption": { "written": 0, "bugs_found": 0, "weight": 1.0 }
+  },
+  "bug_patterns": [],
+  "last_updated": "setup",
+  "total_tests_written": 0,
+  "total_bugs_found": 0
+}

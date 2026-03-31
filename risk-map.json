@@ -1,0 +1,401 @@
+{
+  "generated_at": "2026-03-31",
+  "modules": [
+    {
+      "file": "src/elf.rs",
+      "function": "parse_elf",
+      "line": 135,
+      "risk_score": 7.85,
+      "dimensions": {
+        "complexity": 7,
+        "input_handling": 9,
+        "error_handling": 8,
+        "data_flow": 5,
+        "dependency": 8
+      },
+      "reasons": ["Parses external ELF binary input", "Complex loop with multiple match arms", "Depends on goblin parser versions"],
+      "suggested_tests": ["malformed-input", "boundary", "null-input"]
+    },
+    {
+      "file": "src/elf.rs",
+      "function": "convert_flags",
+      "line": 15,
+      "risk_score": 5.35,
+      "dimensions": {
+        "complexity": 5,
+        "input_handling": 6,
+        "error_handling": 5,
+        "data_flow": 3,
+        "dependency": 4
+      },
+      "reasons": ["If/else chain on bit flags", "Converts raw u32 flags to memory flags"],
+      "suggested_tests": ["boundary", "edge-case"]
+    },
+    {
+      "file": "src/machine/mod.rs",
+      "function": "initialize_stack",
+      "line": 186,
+      "risk_score": 7.4,
+      "dimensions": {
+        "complexity": 8,
+        "input_handling": 8,
+        "error_handling": 7,
+        "data_flow": 6,
+        "dependency": 5
+      },
+      "reasons": ["Complex nested loops writing to memory", "Handles variable-length argument arrays", "Multiple memory store operations"],
+      "suggested_tests": ["boundary", "null-input", "edge-case"]
+    },
+    {
+      "file": "src/machine/mod.rs",
+      "function": "load_elf_inner",
+      "line": 116,
+      "risk_score": 6.2,
+      "dimensions": {
+        "complexity": 5,
+        "input_handling": 7,
+        "error_handling": 6,
+        "data_flow": 4,
+        "dependency": 7
+      },
+      "reasons": ["Processes ELF program headers", "Calls parse_elf externally", "Memory initialization from binary"],
+      "suggested_tests": ["malformed-input", "boundary"]
+    },
+    {
+      "file": "src/machine/mod.rs",
+      "function": "run_with_decoder",
+      "line": 294,
+      "risk_score": 6.5,
+      "dimensions": {
+        "complexity": 7,
+        "input_handling": 4,
+        "error_handling": 7,
+        "data_flow": 6,
+        "dependency": 5
+      },
+      "reasons": ["Main execution loop with step-by-step decode", "Cycle limit checking", "Pause signal handling"],
+      "suggested_tests": ["edge-case", "error-path", "state-corruption"]
+    },
+    {
+      "file": "src/decoder.rs",
+      "function": "decode_mop",
+      "line": 139,
+      "risk_score": 7.1,
+      "dimensions": {
+        "complexity": 9,
+        "input_handling": 7,
+        "error_handling": 6,
+        "data_flow": 5,
+        "dependency": 6
+      },
+      "reasons": ["Deeply nested match on instruction encodings", "Multiple R4type/R5type instruction families", "Complex bit manipulation"],
+      "suggested_tests": ["edge-case", "boundary", "malformed-input"]
+    },
+    {
+      "file": "src/decoder.rs",
+      "function": "decode_raw",
+      "line": 97,
+      "risk_score": 6.8,
+      "dimensions": {
+        "complexity": 8,
+        "input_handling": 7,
+        "error_handling": 6,
+        "data_flow": 4,
+        "dependency": 6
+      },
+      "reasons": ["Large match statement on opcodes", "Reads from memory for instruction fetch", "Bit extraction and sign extension"],
+      "suggested_tests": ["edge-case", "boundary", "malformed-input"]
+    },
+    {
+      "file": "src/memory/mod.rs",
+      "function": "load_c_string_byte_by_byte",
+      "line": 155,
+      "risk_score": 6.0,
+      "dimensions": {
+        "complexity": 5,
+        "input_handling": 7,
+        "error_handling": 6,
+        "data_flow": 4,
+        "dependency": 5
+      },
+      "reasons": ["Loop reading bytes until null terminator", "No maximum length bound", "Memory access in loop"],
+      "suggested_tests": ["boundary", "null-input", "edge-case"]
+    },
+    {
+      "file": "src/memory/mod.rs",
+      "function": "check_no_overflow",
+      "line": 104,
+      "risk_score": 5.5,
+      "dimensions": {
+        "complexity": 4,
+        "input_handling": 6,
+        "error_handling": 5,
+        "data_flow": 3,
+        "dependency": 4
+      },
+      "reasons": ["Overflow checking arithmetic", "Multiple boundary conditions"],
+      "suggested_tests": ["boundary", "edge-case"]
+    },
+    {
+      "file": "src/memory/mod.rs",
+      "function": "memset",
+      "line": 148,
+      "risk_score": 5.75,
+      "dimensions": {
+        "complexity": 3,
+        "input_handling": 5,
+        "error_handling": 3,
+        "data_flow": 7,
+        "dependency": 3
+      },
+      "reasons": ["Contains unsafe block with ptr::write_bytes", "Raw memory manipulation"],
+      "suggested_tests": ["boundary", "edge-case"]
+    },
+    {
+      "file": "src/snapshot2.rs",
+      "function": "make_snapshot",
+      "line": 162,
+      "risk_score": 7.5,
+      "dimensions": {
+        "complexity": 8,
+        "input_handling": 7,
+        "error_handling": 7,
+        "data_flow": 7,
+        "dependency": 6
+      },
+      "reasons": ["Complex memory page iteration", "Tracks dirty pages", "Multiple data structure construction"],
+      "suggested_tests": ["edge-case", "state-corruption", "boundary"]
+    },
+    {
+      "file": "src/snapshot2.rs",
+      "function": "resume",
+      "line": 52,
+      "risk_score": 7.2,
+      "dimensions": {
+        "complexity": 7,
+        "input_handling": 8,
+        "error_handling": 7,
+        "data_flow": 6,
+        "dependency": 6
+      },
+      "reasons": ["Restores VM state from snapshot", "Memory page reconstruction", "Data source loading"],
+      "suggested_tests": ["state-corruption", "boundary", "malformed-input"]
+    },
+    {
+      "file": "src/snapshot2.rs",
+      "function": "store_bytes",
+      "line": 117,
+      "risk_score": 6.3,
+      "dimensions": {
+        "complexity": 6,
+        "input_handling": 7,
+        "error_handling": 6,
+        "data_flow": 5,
+        "dependency": 6
+      },
+      "reasons": ["Loop writing data from external source", "Memory address calculations", "Size tracking"],
+      "suggested_tests": ["boundary", "null-input", "edge-case"]
+    },
+    {
+      "file": "src/snapshot.rs",
+      "function": "make_snapshot",
+      "line": 38,
+      "risk_score": 6.0,
+      "dimensions": {
+        "complexity": 6,
+        "input_handling": 6,
+        "error_handling": 5,
+        "data_flow": 5,
+        "dependency": 5
+      },
+      "reasons": ["Iterates memory pages", "Copies register state"],
+      "suggested_tests": ["edge-case", "state-corruption"]
+    },
+    {
+      "file": "src/snapshot.rs",
+      "function": "resume",
+      "line": 80,
+      "risk_score": 5.8,
+      "dimensions": {
+        "complexity": 5,
+        "input_handling": 6,
+        "error_handling": 5,
+        "data_flow": 5,
+        "dependency": 5
+      },
+      "reasons": ["Restores memory from snapshot", "Register state restoration"],
+      "suggested_tests": ["state-corruption", "boundary"]
+    },
+    {
+      "file": "src/bits.rs",
+      "function": "roundup",
+      "line": 2,
+      "risk_score": 3.2,
+      "dimensions": {
+        "complexity": 2,
+        "input_handling": 4,
+        "error_handling": 2,
+        "data_flow": 2,
+        "dependency": 2
+      },
+      "reasons": ["Only has debug_assert for power-of-2 check", "Bit manipulation"],
+      "suggested_tests": ["boundary", "null-input"]
+    },
+    {
+      "file": "src/bits.rs",
+      "function": "rounddown",
+      "line": 9,
+      "risk_score": 3.2,
+      "dimensions": {
+        "complexity": 2,
+        "input_handling": 4,
+        "error_handling": 2,
+        "data_flow": 2,
+        "dependency": 2
+      },
+      "reasons": ["Only has debug_assert for power-of-2 check", "Bit manipulation"],
+      "suggested_tests": ["boundary", "null-input"]
+    },
+    {
+      "file": "src/memory/flat.rs",
+      "function": "store64",
+      "line": 180,
+      "risk_score": 5.5,
+      "dimensions": {
+        "complexity": 5,
+        "input_handling": 6,
+        "error_handling": 5,
+        "data_flow": 4,
+        "dependency": 3
+      },
+      "reasons": ["Bounds checking with if/else", "Byte order conversion"],
+      "suggested_tests": ["boundary", "edge-case"]
+    },
+    {
+      "file": "src/memory/flat.rs",
+      "function": "load64",
+      "line": 137,
+      "risk_score": 5.5,
+      "dimensions": {
+        "complexity": 5,
+        "input_handling": 6,
+        "error_handling": 5,
+        "data_flow": 4,
+        "dependency": 3
+      },
+      "reasons": ["Bounds checking with if/else", "Byte order conversion"],
+      "suggested_tests": ["boundary", "edge-case"]
+    },
+    {
+      "file": "src/memory/wxorx.rs",
+      "function": "init_pages",
+      "line": 28,
+      "risk_score": 6.5,
+      "dimensions": {
+        "complexity": 7,
+        "input_handling": 7,
+        "error_handling": 6,
+        "data_flow": 5,
+        "dependency": 5
+      },
+      "reasons": ["Permission checking loop", "Multiple if/else for flag validation", "Write/XOR-execute security model"],
+      "suggested_tests": ["edge-case", "boundary", "state-corruption"]
+    },
+    {
+      "file": "src/memory/sparse.rs",
+      "function": "store_bytes",
+      "line": 164,
+      "risk_score": 6.0,
+      "dimensions": {
+        "complexity": 6,
+        "input_handling": 7,
+        "error_handling": 5,
+        "data_flow": 5,
+        "dependency": 4
+      },
+      "reasons": ["While loop with page boundary crossing", "Page fault handling"],
+      "suggested_tests": ["boundary", "edge-case"]
+    },
+    {
+      "file": "src/memory/sparse.rs",
+      "function": "load",
+      "line": 41,
+      "risk_score": 5.8,
+      "dimensions": {
+        "complexity": 6,
+        "input_handling": 6,
+        "error_handling": 5,
+        "data_flow": 5,
+        "dependency": 4
+      },
+      "reasons": ["Loop reading across page boundaries", "Page fault resolution"],
+      "suggested_tests": ["boundary", "edge-case"]
+    },
+    {
+      "file": "src/cost_model.rs",
+      "function": "estimate_cycles",
+      "line": 15,
+      "risk_score": 5.0,
+      "dimensions": {
+        "complexity": 8,
+        "input_handling": 3,
+        "error_handling": 2,
+        "data_flow": 2,
+        "dependency": 3
+      },
+      "reasons": ["50+ match arms for opcode costs", "Complete coverage risk"],
+      "suggested_tests": ["edge-case"]
+    },
+    {
+      "file": "src/rng.rs",
+      "function": "fill",
+      "line": 10,
+      "risk_score": 4.0,
+      "dimensions": {
+        "complexity": 4,
+        "input_handling": 5,
+        "error_handling": 2,
+        "data_flow": 3,
+        "dependency": 2
+      },
+      "reasons": ["Loop with seed-based generation", "No input validation on seed"],
+      "suggested_tests": ["boundary", "null-input"]
+    },
+    {
+      "file": "src/machine/asm/mod.rs",
+      "function": "check_memory_writable",
+      "line": 166,
+      "risk_score": 6.8,
+      "dimensions": {
+        "complexity": 6,
+        "input_handling": 7,
+        "error_handling": 6,
+        "data_flow": 7,
+        "dependency": 5
+      },
+      "reasons": ["Loop checking page permissions", "Unsafe memory access", "Debug assertions"],
+      "suggested_tests": ["boundary", "edge-case", "state-corruption"]
+    },
+    {
+      "file": "src/machine/asm/mod.rs",
+      "function": "run_with_decoder",
+      "line": 758,
+      "risk_score": 7.0,
+      "dimensions": {
+        "complexity": 7,
+        "input_handling": 5,
+        "error_handling": 7,
+        "data_flow": 7,
+        "dependency": 6
+      },
+      "reasons": ["Main ASM execution loop", "Unsafe block for native code execution", "Pause signal handling"],
+      "suggested_tests": ["edge-case", "error-path", "state-corruption"]
+    }
+  ],
+  "summary": {
+    "total_functions": 27,
+    "high_risk": 5,
+    "medium_risk": 15,
+    "low_risk": 7
+  }
+}
