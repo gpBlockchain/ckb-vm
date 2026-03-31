@@ -703,7 +703,7 @@ fn test_check_no_overflow_one_past_limit() {
 }
 
 #[test]
-fn test_check_no_overflow_addr_at_memory_size() {
+fn test_check_no_overflow_addr_equals_memory_size() {
     // addr=4096, size=1, memory_size=4096 → should fail (addr >= memory_size)
     let result = check_no_overflow(4096, 1, 4096);
     assert!(result.is_err());
