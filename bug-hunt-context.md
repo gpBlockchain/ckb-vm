@@ -7,13 +7,13 @@ CKB-VM is Nervos CKB's RISC-V virtual machine implementation in Rust. It support
 ## Test Coverage Gaps
 
 1. **Instruction decoding** — decode_mop and decode_raw with complex MOP patterns
-2. **Snapshot/resume** — snapshot2 dirty page coalescing, DataSource failures — partially tested with 16 state-corruption tests
-3. **Stack initialization** — tested: empty args, empty Bytes, zero stack size, large args, error propagation
-4. **WXorX memory permissions** — write-then-execute, flag edge cases — tested with 16 edge-case/boundary tests
-5. **ASM memory checks** — writable/executable/inited checks with boundary addresses
-6. **Cycle limit edge cases** — exactly at limit, one below, overflow — tested with 13 boundary tests
-7. **Decoder cache** — instruction cache eviction, collision handling — tested with 4 MOP edge-case tests
-8. **Snapshot page tracking** — track_pages/untrack_pages boundary conditions (new wraparound panic found)
+2. **Snapshot/resume** — resume state corruption scenarios — partially tested with 18 new tests
+3. **ASM memory checks** — writable/executable/inited checks with boundary addresses
+4. **Decoder cache** — instruction cache eviction, collision handling — partially tested
+5. **load_elf_inner** — ELF loading with edge cases (risk 6.2, untested)
+6. **asm/check_memory_writable** — page permission checks (risk 6.8, untested)
+7. **asm/run_with_decoder** — main execution loop (risk 7.0, lightly tested)
+8. **Concurrent access patterns** — thread safety, race conditions (untested)
 
 ## Known Bugs
 
