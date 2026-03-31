@@ -8,7 +8,7 @@ use ckb_vm_definitions::instructions as insts;
 
 #[test]
 pub fn test_decode_mop_adc_partial_match() {
-    let mut memory = SparseMemory::<u64>::default();
+    let mut memory = SparseMemory::<u64>::new(0x1000000);
     let pc = 0x1000;
 
     // ADC sequence:
