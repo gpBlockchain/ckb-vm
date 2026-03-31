@@ -347,6 +347,58 @@ fn test_sparse_memory_store_past_end() {
 }
 
 #[test]
+fn test_sparse_memory_store_past_end_should_not_partially_write() {
+    let mut mem = SparseMemory::<u64>::new(4096);
+    mem.init_pages(0, 4096, 0, None, 0).unwrap();
+
+    // Write two bytes starting from last valid byte. This should fail.
+    let result = mem.store_bytes(4095, &[0xAA, 0xBB]);
+    assert!(result.is_err(), "Cross-end store should fail");
+
+    // Failing store should not modify in-range bytes.
+    assert_eq!(mem.load8(&4095u64).unwrap().to_u8(), 0);
+}
+
+#[test]
+fn test_sparse_memory_store_byte_past_end_should_not_partially_write() {
+    let mut mem = SparseMemory::<u64>::new(4096);
+    mem.init_pages(0, 4096, 0, None, 0).unwrap();
+
+    // memset-like write crossing end should fail.
+    let result = mem.store_byte(4095, 2, 0xCC);
+    assert!(result.is_err(), "Cross-end store_byte should fail");
+
+    // Failing store should not modify in-range bytes.
+    assert_eq!(mem.load8(&4095u64).unwrap().to_u8(), 0);
+}
+
+#[test]
+fn test_sparse_memory_store64_cross_end_should_not_partially_write() {
+    let mut mem = SparseMemory::<u64>::new(4096);
+    mem.init_pages(0, 4096, 0, None, 0).unwrap();
+
+    // 8-byte store from 4092 crosses memory end and should fail atomically.
+    let result = mem.store64(&4092u64, &0x1122334455667788u64.into());
+    assert!(result.is_err(), "Cross-end store64 should fail");
+
+    // Bytes in valid region should remain unchanged.
+    for i in 4092u64..4096u64 {
+        assert_eq!(mem.load8(&i).unwrap().to_u8(), 0);
+    }
+}
+
+#[test]
+fn test_sparse_memory_store16_cross_end_should_not_partially_write() {
+    let mut mem = SparseMemory::<u64>::new(4096);
+    mem.init_pages(0, 4096, 0, None, 0).unwrap();
+
+    let result = mem.store16(&4095u64, &0xABCDu16.into());
+    assert!(result.is_err(), "Cross-end store16 should fail");
+
+    assert_eq!(mem.load8(&4095u64).unwrap().to_u8(), 0);
+}
+
+#[test]
 fn test_sparse_memory_load64_near_end() {
     let mut mem = SparseMemory::<u64>::new(4096);
     mem.init_pages(0, 4096, 0, None, 0).unwrap();

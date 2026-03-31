@@ -275,9 +275,10 @@ fn test_parse_elf_valid_header_no_program_headers() {
     elf[25] = 0x00;
     elf[26] = 0x01;
     elf[32] = 64; // e_phoff
-    elf[40] = 64; // e_ehsize
-    elf[42] = 56; // e_phentsize
-    elf[44] = 0; // e_phnum = 0
+    elf[54] = 56; // e_phentsize
+    elf[56] = 0; // e_phnum = 0
+    elf[58] = 64; // e_shentsize
+    elf[60] = 64; // e_ehsize
 
     let result = run_parse_elf::<u64>(&elf, VERSION2);
     match result {
@@ -496,4 +497,79 @@ fn test_parse_elf_versions_differ() {
             );
         }
     }
+}
+
+#[test]
+fn test_parse_elf_rejects_wrapping_segment_size() {
+    let mut elf = vec![0u8; 64 + 56];
+    elf[0] = 0x7f;
+    elf[1] = b'E';
+    elf[2] = b'L';
+    elf[3] = b'F';
+    elf[4] = 2; // ELF64
+    elf[5] = 1; // little-endian
+    elf[6] = 1; // version
+    elf[16] = 2; // ET_EXEC
+    elf[18] = 243; // EM_RISCV
+    elf[20] = 1; // e_version
+    elf[32] = 64; // e_phoff
+    elf[54] = 56; // e_phentsize
+    elf[56] = 1; // e_phnum
+    elf[58] = 64; // e_shentsize
+    elf[60] = 64; // e_ehsize
+
+    // Program header at offset 64 (ELF64 little-endian)
+    let ph = 64usize;
+    elf[ph..ph + 4].copy_from_slice(&1u32.to_le_bytes()); // PT_LOAD
+    elf[ph + 4..ph + 8].copy_from_slice(&(PF_R as u32).to_le_bytes());
+    elf[ph + 8..ph + 16].copy_from_slice(&0u64.to_le_bytes()); // p_offset
+    elf[ph + 16..ph + 24].copy_from_slice(&u64::MAX.to_le_bytes()); // p_vaddr
+    elf[ph + 24..ph + 32].copy_from_slice(&0u64.to_le_bytes()); // p_paddr
+    elf[ph + 32..ph + 40].copy_from_slice(&0u64.to_le_bytes()); // p_filesz
+    elf[ph + 40..ph + 48].copy_from_slice(&u64::MAX.to_le_bytes()); // p_memsz
+    elf[ph + 48..ph + 56].copy_from_slice(&4096u64.to_le_bytes()); // p_align
+
+    let result = run_parse_elf::<u64>(&elf, VERSION2);
+    assert!(
+        result.is_err(),
+        "wrapping segment size/address should be rejected"
+    );
+}
+
+#[test]
+fn test_parse_elf_rejects_filesz_larger_than_memsz() {
+    let mut elf = vec![0u8; 64 + 56 + 4096];
+    elf[0] = 0x7f;
+    elf[1] = b'E';
+    elf[2] = b'L';
+    elf[3] = b'F';
+    elf[4] = 2; // ELF64
+    elf[5] = 1; // little-endian
+    elf[6] = 1; // version
+    elf[16] = 2; // ET_EXEC
+    elf[18] = 243; // EM_RISCV
+    elf[20] = 1; // e_version
+    elf[24..32].copy_from_slice(&0x1000u64.to_le_bytes()); // e_entry
+    elf[32] = 64; // e_phoff
+    elf[54] = 56; // e_phentsize
+    elf[56] = 1; // e_phnum
+    elf[58] = 64; // e_shentsize
+    elf[60] = 64; // e_ehsize
+
+    // Program header at offset 64 (ELF64 little-endian)
+    let ph = 64usize;
+    elf[ph..ph + 4].copy_from_slice(&1u32.to_le_bytes()); // PT_LOAD
+    elf[ph + 4..ph + 8].copy_from_slice(&(PF_R as u32).to_le_bytes());
+    elf[ph + 8..ph + 16].copy_from_slice(&(64u64 + 56u64).to_le_bytes()); // p_offset
+    elf[ph + 16..ph + 24].copy_from_slice(&0x1000u64.to_le_bytes()); // p_vaddr
+    elf[ph + 24..ph + 32].copy_from_slice(&0u64.to_le_bytes()); // p_paddr
+    elf[ph + 32..ph + 40].copy_from_slice(&4096u64.to_le_bytes()); // p_filesz
+    elf[ph + 40..ph + 48].copy_from_slice(&0u64.to_le_bytes()); // p_memsz (invalid)
+    elf[ph + 48..ph + 56].copy_from_slice(&4096u64.to_le_bytes()); // p_align
+
+    let result = run_parse_elf::<u64>(&elf, VERSION2);
+    assert!(
+        result.is_err(),
+        "ELF with p_filesz > p_memsz should be rejected"
+    );
 }

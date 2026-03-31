@@ -3,15 +3,15 @@ use ckb_vm::error::OutOfBoundKind;
 use ckb_vm::machine::{VERSION0, VERSION1, VERSION2};
 use ckb_vm::registers::{A0, A1, A2, A3, A4, A5, A7};
 use ckb_vm::{
-    CoreMachine, DEFAULT_MEMORY_SIZE, Debugger, DefaultCoreMachine, DefaultMachineRunner, Error,
-    FlatMemory, ISA_B, ISA_IMC, Memory, RISCV_PAGESIZE, Register, RustDefaultMachineBuilder,
-    SparseMemory, SupportMachine, Syscalls, WXorXMemory, rng, run,
+    rng, run, CoreMachine, Debugger, DefaultCoreMachine, DefaultMachineRunner, Error, FlatMemory,
+    Memory, Register, RustDefaultMachineBuilder, SparseMemory, SupportMachine, Syscalls,
+    WXorXMemory, DEFAULT_MEMORY_SIZE, ISA_B, ISA_IMC, RISCV_PAGESIZE,
 };
 #[cfg(has_asm)]
 use ckb_vm_definitions::asm::AsmCoreMachine;
 use std::fs;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicU8, Ordering};
+use std::sync::Arc;
 pub mod machine_build;
 
 #[test]

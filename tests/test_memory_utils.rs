@@ -107,3 +107,12 @@ fn test_get_page_indices_spanning_four_pages() {
     assert_eq!(start, 0);
     assert_eq!(end, 3);
 }
+
+#[test]
+fn test_get_page_indices_wraparound_should_not_reverse_range() {
+    let (start, end) = get_page_indices(u64::MAX, 2);
+    assert!(
+        start <= end,
+        "page index range should not reverse on address overflow"
+    );
+}

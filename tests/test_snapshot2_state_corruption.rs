@@ -150,3 +150,63 @@ pub fn test_snapshot2_resume_rejects_short_read_from_data_source() {
     let result = ctx.resume(&mut core, &snapshot);
     assert!(result.is_err());
 }
+
+#[test]
+pub fn test_snapshot2_track_pages_wraparound_start_panics() {
+    let source = MockDataSource {
+        data: Bytes::from(vec![0u8; 8192]),
+    };
+    let mut ctx = Snapshot2Context::new(source);
+    let mut core = DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION1, u64::MAX);
+
+    let _ = ctx.track_pages(&mut core, u64::MAX, 1, &1, 0);
+}
+
+#[test]
+pub fn test_snapshot2_track_pages_offset_overflow_panics() {
+    let source = MockDataSource {
+        data: Bytes::from(vec![0u8; 8192]),
+    };
+    let mut ctx = Snapshot2Context::new(source);
+    let mut core = DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION1, u64::MAX);
+
+    // start=1 yields aligned_bytes=4095, so offset + aligned_bytes overflows.
+    let _ = ctx.track_pages(&mut core, 1, 4096, &1, u64::MAX);
+}
+
+#[test]
+pub fn test_snapshot2_track_pages_out_of_bound_page_returns_error() {
+    let source = MockDataSource {
+        data: Bytes::from(vec![0u8; 8192]),
+    };
+    let mut ctx = Snapshot2Context::new(source);
+    let mut core = DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION1, u64::MAX);
+
+    // aligned_start is far beyond available memory pages, clear_flag should fail.
+    let result = ctx.track_pages(&mut core, u64::MAX - 4095, 8192, &1, 0);
+    assert!(result.is_err());
+}
+
+#[test]
+pub fn test_snapshot2_untrack_pages_wraparound_should_error() {
+    let source = MockDataSource {
+        data: Bytes::from(vec![0u8; 8192]),
+    };
+    let mut ctx = Snapshot2Context::new(source);
+    let mut core = DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION1, u64::MAX);
+
+    let result = ctx.untrack_pages(&mut core, u64::MAX, 2);
+    assert!(result.is_err());
+}
+
+#[test]
+pub fn test_snapshot2_untrack_pages_wraparound_large_length_should_error() {
+    let source = MockDataSource {
+        data: Bytes::from(vec![0u8; 8192]),
+    };
+    let mut ctx = Snapshot2Context::new(source);
+    let mut core = DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION1, u64::MAX);
+
+    let result = ctx.untrack_pages(&mut core, u64::MAX, 4096);
+    assert!(result.is_err());
+}

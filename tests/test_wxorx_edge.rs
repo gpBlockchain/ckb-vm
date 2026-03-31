@@ -214,3 +214,17 @@ fn test_wxorx_lr_operations() {
     mem.set_lr(&12345u64.into());
     assert_eq!(mem.lr().to_u64(), 12345);
 }
+
+#[test]
+fn test_wxorx_init_pages_addr_size_overflow_should_error() {
+    let mut mem = WXorXMemory::<SparseMemory<u64>>::new(4096);
+    let result = mem.init_pages(u64::MAX - 4095, 4096, FLAG_FREEZED, None, 0);
+    assert!(result.is_err(), "overflowing addr+size should return error");
+}
+
+#[test]
+fn test_wxorx_init_pages_addr_size_wrapping_should_not_panic() {
+    let mut mem = WXorXMemory::<SparseMemory<u64>>::new(4096);
+    let result = mem.init_pages(u64::MAX - 4095, 8192, FLAG_FREEZED, None, 0);
+    assert!(result.is_err(), "wrapping addr+size should return error");
+}
