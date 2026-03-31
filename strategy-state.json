@@ -7,7 +7,7 @@
     "concurrency":      { "written": 0, "bugs_found": 0, "weight": 1.0 },
     "regression":       { "written": 0, "bugs_found": 0, "weight": 1.0 },
     "malformed-input":  { "written": 31, "bugs_found": 0, "weight": 0.40 },
-    "state-corruption": { "written": 16, "bugs_found": 0, "weight": 0.99 }
+    "state-corruption": { "written": 19, "bugs_found": 0, "weight": 0.95 }
   },
   "bug_patterns": [
     { "pattern": "integer overflow/underflow", "count": 1, "test_type": "null-input" },
