@@ -9,7 +9,7 @@ CKB-VM is Nervos CKB's RISC-V virtual machine implementation in Rust. It support
 1. **Instruction decoding** — decode_mop and decode_raw with complex MOP patterns
 2. **Snapshot/resume** — snapshot2 dirty page coalescing, DataSource failures — partially tested with 16 state-corruption tests
 3. ~~**Stack initialization**~~ — tested: empty args, empty Bytes, zero stack size, large args, error propagation
-4. **WXorX memory permissions** — write-then-execute, flag edge cases
+4. **WXorX memory permissions** — write-then-execute, flag edge cases — tested with 15 edge-case tests
 5. **ASM memory checks** — writable/executable/inited checks with boundary addresses
 6. **Cycle limit edge cases** — exactly at limit, one below, overflow
 7. **Decoder cache** — instruction cache eviction, collision handling
@@ -39,6 +39,7 @@ CKB-VM is Nervos CKB's RISC-V virtual machine implementation in Rust. It support
 - RNG deterministic behavior and cost model cycle counting
 - Snapshot2 state: dirty page coalescing, register preservation, unaligned error detection
 - InitializeStack: empty args, error propagation, SP alignment across versions
+- WXorX memory: init_pages validation, permission checks, page boundary straddling
 
 ## Ideas Backlog — Tests to Write
 
@@ -56,7 +57,7 @@ CKB-VM is Nervos CKB's RISC-V virtual machine implementation in Rust. It support
 | Category | Type | Attempts | Kept | Last Tried |
 |----------|------|----------|------|------------|
 | malformed-input | test-added | 1 | 31 | iteration 1 |
-| edge-case | test-added | 3 | 68 | iteration 4 |
+| edge-case | test-added | 4 | 83 | iteration 8 |
 | boundary | test-added | 1 | 42 | iteration 3 |
 | error-path | test-added | 1 | 34 | iteration 5 |
 | null-input | bug-found | 1 | 15 | iteration 6 |
