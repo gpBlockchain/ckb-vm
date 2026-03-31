@@ -61,7 +61,7 @@ CKB-VM is Nervos CKB's RISC-V virtual machine implementation in Rust. It support
 
 | Category | Type | Attempts | Kept | Last Tried |
 |----------|------|----------|------|------------|
-| malformed-input | test-added | 1 | 31 | iteration 1 |
+| malformed-input | test-added | 2 | 34 | iteration 14 |
 | edge-case | test-added | 5 | 85 | iteration 13 |
 | boundary | test-added | 2 | 73 | iteration 10 |
 | error-path | test-added | 1 | 34 | iteration 5 |
