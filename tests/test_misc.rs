@@ -522,11 +522,39 @@ pub fn test_default_core_machine_with_zero_memory() {
 }
 
 #[test]
+pub fn test_default_core_machine_zero_max_cycles() {
+    let core_machine = DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION1, 0);
+    let mut machine = RustDefaultMachineBuilder::new(core_machine).build();
+    let buffer = fs::read("tests/programs/syscall64").unwrap().into();
+    machine
+        .load_program(&buffer, [Ok("syscall64".into())].into_iter())
+        .unwrap();
+    let result = machine.run();
+    assert!(result.is_err());
+    assert_eq!(result.unwrap_err(), Error::CyclesExceeded);
+}
+
+#[test]
+pub fn test_default_core_machine_one_max_cycle() {
+    let core_machine = DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION1, 1);
+    let mut machine = RustDefaultMachineBuilder::new(core_machine)
+        .instruction_cycle_func(Box::new(constant_cycles))
+        .build();
+    let buffer = fs::read("tests/programs/syscall64").unwrap().into();
+    machine
+        .load_program(&buffer, [Ok("syscall64".into())].into_iter())
+        .unwrap();
+    let result = machine.run();
+    // Should hit cycle limit quickly
+    assert!(result.is_err());
+}
+
+#[test]
 pub fn test_load_program_with_empty_args() {
     let core_machine =
         DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION1, u64::MAX);
     let mut machine = RustDefaultMachineBuilder::new(core_machine).build();
-    let buffer = fs::read("tests/programs/nop").unwrap().into();
+    let buffer = fs::read("tests/programs/syscall64").unwrap().into();
     let result = machine.load_program(&buffer, std::iter::empty());
     assert!(result.is_ok());
 }
