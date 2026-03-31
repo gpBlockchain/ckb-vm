@@ -1,0 +1,81 @@
+   Compiling ckb-vm v0.24.0 (/Users/guopenglin/RustroverProjects/ckb-vm)
+warning: unused import: `VERSION1`
+ --> tests/test_elf_parsing.rs:4:33
+  |
+4 | use ckb_vm::machine::{VERSION0, VERSION1, VERSION2};
+  |                                 ^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: `ckb-vm` (test "test_elf_parsing") generated 1 warning (run `cargo fix --test "test_elf_parsing" -p ckb-vm` to apply 1 suggestion)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.67s
+     Running tests/test_elf_parsing.rs (target/debug/deps/test_elf_parsing-3ddf6c2ee2cf2123)
+
+running 21 tests
+test test_parse_elf_executable_segment_ok ... ok
+test test_parse_elf_invalid_class_value ... ok
+test test_parse_elf_invalid_endian_value ... ok
+test test_parse_elf_32bit_class_on_64bit_target ... ok
+test test_parse_elf_64bit_class_on_32bit_target ... ok
+test test_parse_elf_empty_input ... ok
+test test_parse_elf_max_phnum ... FAILED
+test test_parse_elf_offset_overflow ... FAILED
+test test_parse_elf_large_phoff ... FAILED
+test test_parse_elf_partial_magic ... ok
+test test_parse_elf_readable_only_segment ... ok
+test test_parse_elf_segment_beyond_file ... FAILED
+test test_parse_elf_single_byte ... ok
+test test_parse_elf_truncated_at_16_bytes ... ok
+test test_parse_elf_truncated_at_32_bytes ... ok
+test test_parse_elf_unreadable_segment ... FAILED
+test test_parse_elf_valid_header_no_program_headers ... ok
+test test_parse_elf_version0_vs_version1 ... ok
+test test_parse_elf_writable_and_executable_flags ... FAILED
+test test_parse_elf_wrong_magic ... ok
+test test_parse_elf_zeroed_header ... ok
+
+failures:
+
+---- test_parse_elf_max_phnum stdout ----
+
+thread 'test_parse_elf_max_phnum' (14679106) panicked at tests/test_elf_parsing.rs:492:5:
+Max phnum should fail (not enough data)
+
+---- test_parse_elf_offset_overflow stdout ----
+
+thread 'test_parse_elf_offset_overflow' (14679107) panicked at tests/test_elf_parsing.rs:411:5:
+Overflowing offset+filesz should fail
+
+---- test_parse_elf_large_phoff stdout ----
+
+thread 'test_parse_elf_large_phoff' (14679105) panicked at tests/test_elf_parsing.rs:469:5:
+Large phoff past file should fail
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- test_parse_elf_segment_beyond_file stdout ----
+
+thread 'test_parse_elf_segment_beyond_file' (14679110) panicked at tests/test_elf_parsing.rs:241:5:
+Segment pointing past file end should fail
+
+---- test_parse_elf_unreadable_segment stdout ----
+
+thread 'test_parse_elf_unreadable_segment' (14679114) panicked at tests/test_elf_parsing.rs:318:5:
+Unreadable segment should fail
+
+---- test_parse_elf_writable_and_executable_flags stdout ----
+
+thread 'test_parse_elf_writable_and_executable_flags' (14679117) panicked at tests/test_elf_parsing.rs:280:5:
+Writable+executable segment should fail
+
+
+failures:
+    test_parse_elf_large_phoff
+    test_parse_elf_max_phnum
+    test_parse_elf_offset_overflow
+    test_parse_elf_segment_beyond_file
+    test_parse_elf_unreadable_segment
+    test_parse_elf_writable_and_executable_flags
+
+test result: FAILED. 15 passed; 6 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+error: test failed, to rerun pass `--test test_elf_parsing`
