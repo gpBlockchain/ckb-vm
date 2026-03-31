@@ -8,11 +8,11 @@ CKB-VM is Nervos CKB's RISC-V virtual machine implementation in Rust. It support
 
 1. **Instruction decoding** — decode_mop and decode_raw with complex MOP patterns
 2. **Snapshot/resume** — snapshot2 dirty page coalescing, DataSource failures — partially tested with 16 state-corruption tests
-3. ~~**Stack initialization**~~ — tested: empty args, empty Bytes, zero stack size, large args, error propagation
+3. **Stack initialization** — tested: empty args, empty Bytes, zero stack size, large args, error propagation
 4. **WXorX memory permissions** — write-then-execute, flag edge cases — tested with 15 edge-case tests
 5. **ASM memory checks** — writable/executable/inited checks with boundary addresses
 6. **Cycle limit edge cases** — exactly at limit, one below, overflow — tested with 13 boundary tests
-7. **Decoder cache** — instruction cache eviction, collision handling
+7. **Decoder cache** — instruction cache eviction, collision handling — tested with 4 MOP edge-case tests
 8. **Snapshot page tracking** — track_pages/untrack_pages boundary conditions
 
 ## Known Bugs
@@ -21,6 +21,10 @@ CKB-VM is Nervos CKB's RISC-V virtual machine implementation in Rust. It support
    - File: `src/machine/mod.rs:203`
    - Evidence: `tests/test_initialize_stack.rs` → `test_initialize_stack_zero_stack_size` (#[should_panic])
    - Category: null-input / boundary
+2. **decode_mop fusion failure** — MOP fusion rules (ADC, ADD3) fail to match in certain instruction sequences even when conditions are met. Decoder returns individual instructions instead of fused one.
+   - File: `src/decoder.rs:139`
+   - Evidence: `tests/test_decode_mop.rs` → `test_decode_mop_adc_partial_match`
+   - Category: edge-case
 
 ## What Works
 
