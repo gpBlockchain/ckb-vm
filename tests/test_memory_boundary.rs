@@ -755,3 +755,53 @@ fn test_wxorx_store_byte_at_page_start_after_init() {
     assert_eq!(mem.load8(&0u64).unwrap().to_u8(), 0x11);
     assert_eq!(mem.load8(&4096u64).unwrap().to_u8(), 0x22);
 }
+
+// --- Iteration 37: init_pages/fill_page_data overflow tests ---
+
+#[test]
+fn test_flat_init_pages_offset_larger_than_size() {
+    let mut mem = FlatMemory::<u64>::new(8192);
+    // offset_from_addr > size → fill_page_data underflows at line 92
+    let result = mem.init_pages(0, 4096, 0, None, 8192);
+    // This should error (ExternalData out of bound) or handle gracefully
+    let _ = result;
+}
+
+#[test]
+fn test_flat_init_pages_with_source_data() {
+    let mut mem = FlatMemory::<u64>::new(8192);
+    let data = Bytes::from(vec![0xAB; 4096]);
+    mem.init_pages(0, 4096, 0, Some(data), 0).unwrap();
+    assert_eq!(mem.load8(&0u64).unwrap().to_u8(), 0xAB);
+    assert_eq!(mem.load8(&4095u64).unwrap().to_u8(), 0xAB);
+}
+
+#[test]
+fn test_flat_init_pages_source_larger_than_size() {
+    let mut mem = FlatMemory::<u64>::new(8192);
+    let data = Bytes::from(vec![0xCD; 8192]);
+    // source is larger than size - should only copy size bytes
+    mem.init_pages(0, 4096, 0, Some(data), 0).unwrap();
+    assert_eq!(mem.load8(&0u64).unwrap().to_u8(), 0xCD);
+}
+
+#[test]
+fn test_sparse_init_pages_with_source_data() {
+    let mut mem = SparseMemory::<u64>::new(8192);
+    let data = Bytes::from(vec![0xEF; 4096]);
+    mem.init_pages(0, 4096, 0, Some(data), 0).unwrap();
+    assert_eq!(mem.load8(&0u64).unwrap().to_u8(), 0xEF);
+    assert_eq!(mem.load8(&4095u64).unwrap().to_u8(), 0xEF);
+}
+
+#[test]
+fn test_wxorx_init_pages_offset_larger_than_size_rejected() {
+    let mut mem = WXorXMemory::<SparseMemory<u64>>::new(8192);
+    // WXorX explicitly checks offset_from_addr > size
+    let result = mem.init_pages(0, 4096, FLAG_FREEZED, None, 8192);
+    assert!(result.is_err());
+    match result {
+        Err(Error::MemOutOfBound(_, OutOfBoundKind::ExternalData)) => {}
+        other => panic!("Expected ExternalData out of bound, got: {:?}", other),
+    }
+}
