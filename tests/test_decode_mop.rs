@@ -2,8 +2,8 @@ pub mod machine_build;
 use ckb_vm::decoder::{DefaultDecoder, InstDecoder};
 use ckb_vm::instructions::{extract_opcode, instruction_length, Rtype};
 use ckb_vm::machine::{VERSION1, VERSION2};
-use ckb_vm::memory::{Memory, SparseMemory};
-use ckb_vm::{Error, ISA_IMC, ISA_MOP};
+use ckb_vm::memory::Memory;
+use ckb_vm::{SparseMemory, ISA_IMC, ISA_MOP};
 use ckb_vm_definitions::instructions as insts;
 
 #[test]
