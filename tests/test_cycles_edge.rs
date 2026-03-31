@@ -1,4 +1,4 @@
-use ckb_vm::machine::{DefaultCoreMachine, SupportMachine, VERSION1, VERSION2};
+use ckb_vm::machine::{DefaultCoreMachine, SupportMachine, VERSION1};
 use ckb_vm::{Error, SparseMemory, WXorXMemory, ISA_IMC, ISA_MOP};
 
 type Core = DefaultCoreMachine<u64, WXorXMemory<SparseMemory<u64>>>;

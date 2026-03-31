@@ -1,5 +1,5 @@
 use ckb_vm::cost_model::{constant_cycles, estimate_cycles};
-use ckb_vm::instructions::{blank_instruction, extract_opcode};
+use ckb_vm::instructions::blank_instruction;
 use ckb_vm::rng::{fill, Rand};
 
 // =========================================================================

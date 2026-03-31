@@ -3,7 +3,7 @@ use ckb_vm::error::{Error, OutOfBoundKind};
 use ckb_vm::memory::sparse::SparseMemory;
 use ckb_vm::memory::wxorx::WXorXMemory;
 use ckb_vm::memory::{Memory, FLAG_DIRTY, FLAG_EXECUTABLE, FLAG_FREEZED};
-use ckb_vm::RISCV_PAGESIZE;
+use ckb_vm::Register;
 
 // =========================================================================
 // WXorXMemory init_pages edge cases
@@ -210,7 +210,7 @@ fn test_wxorx_flag_operations() {
 #[test]
 fn test_wxorx_lr_operations() {
     let mut mem = WXorXMemory::<SparseMemory<u64>>::new(8192);
-    assert_eq!(mem.lr().to_u64(), 0);
+    assert_eq!(mem.lr().to_u64(), u64::MAX);
     mem.set_lr(&12345u64.into());
     assert_eq!(mem.lr().to_u64(), 12345);
 }

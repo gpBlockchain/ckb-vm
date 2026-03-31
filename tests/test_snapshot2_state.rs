@@ -168,7 +168,7 @@ fn test_snapshot_resume_mixed_dirty_and_source() {
 #[test]
 fn test_snapshot_resume_version_mismatch() {
     let source = MemSource::new();
-    let mut ctx = Snapshot2Context::new(source.clone());
+    let ctx = Snapshot2Context::new(source.clone());
     let mut machine = build_machine();
     let snapshot = ctx.make_snapshot(&mut machine).unwrap();
     let mut machine_wrong = Core::new(ISA_IMC | ISA_A | ISA_MOP, VERSION1, u64::MAX);

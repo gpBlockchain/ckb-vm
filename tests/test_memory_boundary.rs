@@ -5,7 +5,7 @@ use ckb_vm::machine::{DefaultCoreMachine, VERSION2};
 use ckb_vm::memory::{
     check_no_overflow, flat::FlatMemory, get_page_indices, sparse::SparseMemory, wxorx::WXorXMemory,
 };
-use ckb_vm::{CoreMachine, Memory, Register, SupportMachine, ISA_IMC};
+use ckb_vm::{Memory, Register, SupportMachine, ISA_IMC};
 
 // =========================================================================
 // bits::roundup / rounddown edge cases

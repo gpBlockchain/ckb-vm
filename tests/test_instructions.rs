@@ -1,7 +1,7 @@
 use ckb_vm::instructions::{
     blank_instruction, extract_opcode, instruction_length, is_basic_block_end_instruction,
-    is_slowpath_instruction, set_instruction_length_2, set_instruction_length_4,
-    set_instruction_length_n, Instruction, Itype, R4type, R5type, Rtype, Stype, Utype,
+    set_instruction_length_2, set_instruction_length_4, set_instruction_length_n, Itype, R4type,
+    R5type, Rtype, Stype, Utype,
 };
 
 // =========================================================================
