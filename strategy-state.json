@@ -1,13 +1,13 @@
 {
   "test_types": {
     "null-input":       { "written": 15, "bugs_found": 1, "weight": 1.02 },
-    "boundary":         { "written": 82, "bugs_found": 5, "weight": 2.10 },
-    "error-path":       { "written": 34, "bugs_found": 0, "weight": 0.58 },
+    "boundary":         { "written": 104, "bugs_found": 5, "weight": 1.98 },
+    "error-path":       { "written": 34, "bugs_found": 0, "weight": 0.55 },
     "edge-case":        { "written": 107, "bugs_found": 5, "weight": 2.22 },
     "concurrency":      { "written": 0, "bugs_found": 0, "weight": 1.0 },
     "regression":       { "written": 0, "bugs_found": 0, "weight": 1.0 },
     "malformed-input":  { "written": 36, "bugs_found": 2, "weight": 1.30 },
-    "state-corruption": { "written": 38, "bugs_found": 0, "weight": 0.94 }
+    "state-corruption": { "written": 38, "bugs_found": 0, "weight": 0.90 }
   },
   "bug_patterns": [
     { "pattern": "integer overflow/underflow", "count": 1, "test_type": "null-input" },
@@ -23,7 +23,7 @@
     { "pattern": "partial memory mutation on failing sparse store64", "count": 1, "test_type": "boundary" },
     { "pattern": "partial memory mutation on failing sparse store16", "count": 1, "test_type": "boundary" }
   ],
-  "last_updated": "iteration_32",
-  "total_tests_written": 311,
+  "last_updated": "iteration_33",
+  "total_tests_written": 333,
   "total_bugs_found": 13
 }
