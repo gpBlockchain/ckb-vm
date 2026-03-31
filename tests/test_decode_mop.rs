@@ -262,9 +262,9 @@ pub fn test_decode_mop_far_jump_abs_lui_jalr_fusion() {
 
     // LUI x1, 0x12345 -> JALR x1, x1, 0x678
     // LUI: opcode=0x37, rd=1, imm=0x12345
-    let lui = (0x12345u32 << 12) | (1 << 7) | 0x37;
+    let lui = ((0x12345u64 << 12) | (1 << 7) | 0x37) as u64;
     // JALR: opcode=0x67, rd=1, rs1=1, imm=0x678
-    let jalr = (0x678u32 << 20) | (1 << 15) | (1 << 12) | (1 << 7) | 0x67;
+    let jalr = ((0x678u64 << 20) | (1 << 15) | (1 << 12) | (1 << 7) | 0x67) as u64;
 
     memory.store32(&pc, &lui).unwrap();
     memory.store32(&(pc + 4), &jalr).unwrap();
@@ -280,8 +280,8 @@ pub fn test_decode_mop_far_jump_lui_jalr_no_fuse_wrong_rd() {
     let pc = 0x1000u64;
 
     // LUI x1, 0x12345 -> JALR x2, x1, 0x678 (rd != RA, no fusion)
-    let lui = (0x12345u32 << 12) | (1 << 7) | 0x37;
-    let jalr = (0x678u32 << 20) | (1 << 15) | (1 << 12) | (2 << 7) | 0x67; // rd=x2
+    let lui = ((0x12345u64 << 12) | (1 << 7) | 0x37) as u64;
+    let jalr = ((0x678u64 << 20) | (1 << 15) | (1 << 12) | (2 << 7) | 0x67) as u64; // rd=x2
 
     memory.store32(&pc, &lui).unwrap();
     memory.store32(&(pc + 4), &jalr).unwrap();
