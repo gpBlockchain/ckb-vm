@@ -156,14 +156,16 @@ pub fn test_snapshot2_resume_rejects_short_read_from_data_source() {
 // --- Iteration 34: snapshot2 mark_program/init_pages overflow tests ---
 
 #[test]
+#[should_panic(expected = "attempt to add with overflow")]
 pub fn test_snapshot2_mark_program_with_overflowing_addr_plus_offset() {
+    // BUG: snapshot2::init_pages line 232: action.addr + action.offset_from_addr
+    // panics with overflow instead of returning error
     let source = MockDataSource {
         data: Bytes::from(vec![0u8; 8192]),
     };
     let mut ctx = Snapshot2Context::new(source);
     let mut core = DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION1, u64::MAX);
 
-    // Create LoadingAction where addr + offset_from_addr overflows
     let metadata = ProgramMetadata {
         actions: vec![LoadingAction {
             addr: u64::MAX,
@@ -175,22 +177,20 @@ pub fn test_snapshot2_mark_program_with_overflowing_addr_plus_offset() {
         entry: 0,
     };
 
-    // mark_program should handle overflow gracefully
-    let result = ctx.mark_program(&mut core, &metadata, &1u64, 0);
-    // This will likely error or panic due to addr + offset overflow
-    // The behavior depends on whether the code handles wrapping
-    let _ = result;
+    ctx.mark_program(&mut core, &metadata, &1u64, 0).unwrap();
 }
 
 #[test]
+#[should_panic(expected = "attempt to subtract with overflow")]
 pub fn test_snapshot2_init_pages_with_size_less_than_offset() {
+    // BUG: snapshot2::init_pages line 235: action.size - action.offset_from_addr
+    // panics with underflow when offset_from_addr > size
     let source = MockDataSource {
         data: Bytes::from(vec![0u8; 8192]),
     };
     let mut ctx = Snapshot2Context::new(source);
     let mut core = DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION1, u64::MAX);
 
-    // offset_from_addr > size → action.size - action.offset_from_addr underflows
     let metadata = ProgramMetadata {
         actions: vec![LoadingAction {
             addr: 0x10000,
@@ -202,20 +202,20 @@ pub fn test_snapshot2_init_pages_with_size_less_than_offset() {
         entry: 0,
     };
 
-    let result = ctx.mark_program(&mut core, &metadata, &1u64, 0);
-    // This could produce unexpected results due to underflow in length calculation
-    let _ = result;
+    ctx.mark_program(&mut core, &metadata, &1u64, 0).unwrap();
 }
 
 #[test]
+#[should_panic(expected = "attempt to subtract with overflow")]
 pub fn test_snapshot2_init_pages_with_source_end_less_than_start() {
+    // BUG: snapshot2::init_pages line 234: action.source.end - action.source.start
+    // panics with underflow when end < start
     let source = MockDataSource {
         data: Bytes::from(vec![0u8; 8192]),
     };
     let mut ctx = Snapshot2Context::new(source);
     let mut core = DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION1, u64::MAX);
 
-    // source.end < source.start → underflow
     let metadata = ProgramMetadata {
         actions: vec![LoadingAction {
             addr: 0x10000,
@@ -227,9 +227,7 @@ pub fn test_snapshot2_init_pages_with_source_end_less_than_start() {
         entry: 0,
     };
 
-    let result = ctx.mark_program(&mut core, &metadata, &1u64, 0);
-    // source.end - source.start underflows → produces huge length
-    let _ = result;
+    ctx.mark_program(&mut core, &metadata, &1u64, 0).unwrap();
 }
 
 #[test]
@@ -634,7 +632,11 @@ pub fn test_snapshot2_resume_data_source_returns_none() {
 
     let result = ctx.resume(&mut core, &snapshot);
     assert!(result.is_err());
-    assert_eq!(result.unwrap_err(), Error::SnapshotDataLoadError);
+    // ShortReadDataSource returns half the data, so page is unaligned
+    assert!(matches!(
+        result.unwrap_err(),
+        Error::MemPageUnalignedAccess(_)
+    ));
 }
 
 #[test]
