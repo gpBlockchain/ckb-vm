@@ -3,7 +3,7 @@
     "null-input":       { "written": 15, "bugs_found": 1, "weight": 1.02 },
     "boundary":         { "written": 73, "bugs_found": 0, "weight": 0.58 },
     "error-path":       { "written": 34, "bugs_found": 0, "weight": 0.58 },
-    "edge-case":        { "written": 87, "bugs_found": 1, "weight": 1.25 },
+    "edge-case":        { "written": 89, "bugs_found": 1, "weight": 1.25 },
     "concurrency":      { "written": 0, "bugs_found": 0, "weight": 1.0 },
     "regression":       { "written": 0, "bugs_found": 0, "weight": 1.0 },
     "malformed-input":  { "written": 31, "bugs_found": 0, "weight": 0.40 },
