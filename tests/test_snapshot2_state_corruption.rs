@@ -26,6 +26,31 @@ impl DataSource<u64> for MockDataSource {
     }
 }
 
+#[derive(Default, Clone, PartialEq)]
+struct ShortReadDataSource {
+    data: Bytes,
+}
+
+impl DataSource<u64> for ShortReadDataSource {
+    fn load_data(&self, id: &u64, offset: u64, length: u64) -> Option<(Bytes, u64)> {
+        if *id != 1 {
+            return None;
+        }
+        let start = offset as usize;
+        if start > self.data.len() {
+            return None;
+        }
+        let requested_end = (offset + length) as usize;
+        let clamped_end = requested_end.min(self.data.len());
+        let actual_len = clamped_end.saturating_sub(start);
+        let shortened_len = actual_len / 2;
+        Some((
+            self.data.slice(start..start + shortened_len),
+            (self.data.len() as u64).saturating_sub(offset),
+        ))
+    }
+}
+
 #[test]
 pub fn test_snapshot2_store_bytes_full_length() {
     let data = vec![0u8; 8192];
@@ -109,4 +134,19 @@ pub fn test_snapshot2_track_pages_logic_gap() {
             .len(),
         0
     );
+}
+
+#[test]
+pub fn test_snapshot2_resume_rejects_short_read_from_data_source() {
+    let source = ShortReadDataSource {
+        data: Bytes::from(vec![1u8; 8192]),
+    };
+    let mut ctx = Snapshot2Context::new(source);
+    let mut core = DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION1, u64::MAX);
+
+    let mut snapshot = ctx.make_snapshot(&mut core).unwrap();
+    snapshot.pages_from_source.push((0x4000, 0, 1, 0, 4096));
+
+    let result = ctx.resume(&mut core, &snapshot);
+    assert!(result.is_err());
 }
