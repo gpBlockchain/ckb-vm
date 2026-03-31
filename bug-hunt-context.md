@@ -7,7 +7,7 @@ CKB-VM is Nervos CKB's RISC-V virtual machine implementation in Rust. It support
 ## Test Coverage Gaps
 
 1. **Instruction decoding** — decode_mop and decode_raw with complex MOP patterns
-2. **Snapshot/resume** — snapshot2 dirty page coalescing, DataSource failures
+2. **Snapshot/resume** — snapshot2 dirty page coalescing, DataSource failures — partially tested with 16 state-corruption tests
 3. ~~**Stack initialization**~~ — tested: empty args, empty Bytes, zero stack size, large args, error propagation
 4. **WXorX memory permissions** — write-then-execute, flag edge cases
 5. **ASM memory checks** — writable/executable/inited checks with boundary addresses
@@ -37,6 +37,8 @@ CKB-VM is Nervos CKB's RISC-V virtual machine implementation in Rust. It support
 - Instruction type constructors (Rtype/Itype/Stype/Utype/R4type/R5type)
 - Error type Display formatting and trait implementations
 - RNG deterministic behavior and cost model cycle counting
+- Snapshot2 state: dirty page coalescing, register preservation, unaligned error detection
+- InitializeStack: empty args, error propagation, SP alignment across versions
 
 ## Ideas Backlog — Tests to Write
 
@@ -58,3 +60,4 @@ CKB-VM is Nervos CKB's RISC-V virtual machine implementation in Rust. It support
 | boundary | test-added | 1 | 42 | iteration 3 |
 | error-path | test-added | 1 | 34 | iteration 5 |
 | null-input | bug-found | 1 | 15 | iteration 6 |
+| state-corruption | test-added | 1 | 16 | iteration 7 |
