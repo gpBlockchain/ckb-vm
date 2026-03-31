@@ -3,7 +3,7 @@
     "null-input":       { "written": 15, "bugs_found": 1, "weight": 1.02 },
     "boundary":         { "written": 82, "bugs_found": 5, "weight": 2.10 },
     "error-path":       { "written": 34, "bugs_found": 0, "weight": 0.58 },
-    "edge-case":        { "written": 94, "bugs_found": 5, "weight": 2.35 },
+    "edge-case":        { "written": 107, "bugs_found": 5, "weight": 2.22 },
     "concurrency":      { "written": 0, "bugs_found": 0, "weight": 1.0 },
     "regression":       { "written": 0, "bugs_found": 0, "weight": 1.0 },
     "malformed-input":  { "written": 36, "bugs_found": 2, "weight": 1.30 },
@@ -23,7 +23,7 @@
     { "pattern": "partial memory mutation on failing sparse store64", "count": 1, "test_type": "boundary" },
     { "pattern": "partial memory mutation on failing sparse store16", "count": 1, "test_type": "boundary" }
   ],
-  "last_updated": "iteration_31",
-  "total_tests_written": 298,
+  "last_updated": "iteration_32",
+  "total_tests_written": 311,
   "total_bugs_found": 13
 }
