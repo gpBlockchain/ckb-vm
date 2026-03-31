@@ -66,9 +66,21 @@ CKB-VM is Nervos CKB's RISC-V virtual machine implementation in Rust. It support
    - Evidence: `tests/test_memory_boundary.rs` → `test_sparse_memory_store64_cross_end_should_not_partially_write`
    - Category: boundary
 13. **sparse::store16 is non-atomic on failing cross-end write** — `store16(4095, value)` mutates byte 4095 before failing.
-   - File: `src/memory/sparse.rs:232-236` (via `store_bytes`)
-   - Evidence: `tests/test_memory_boundary.rs` → `test_sparse_memory_store16_cross_end_should_not_partially_write`
-   - Category: boundary
+    - File: `src/memory/sparse.rs:232-236` (via `store_bytes`)
+    - Evidence: `tests/test_memory_boundary.rs` → `test_sparse_memory_store16_cross_end_should_not_partially_write`
+    - Category: boundary
+14. **snapshot2::init_pages addr + offset_from_addr overflow** — when `action.addr = u64::MAX` and `offset_from_addr = 1`, `addr + offset_from_addr` panics (`attempt to add with overflow`) instead of returning error.
+    - File: `src/snapshot2.rs:232`
+    - Evidence: `tests/test_snapshot2_state_corruption.rs` → `test_snapshot2_mark_program_with_overflowing_addr_plus_offset`
+    - Category: edge-case
+15. **snapshot2::init_pages size - offset_from_addr underflow** — when `action.offset_from_addr > action.size`, the subtraction `action.size - action.offset_from_addr` panics (`attempt to subtract with overflow`) instead of returning error.
+    - File: `src/snapshot2.rs:235`
+    - Evidence: `tests/test_snapshot2_state_corruption.rs` → `test_snapshot2_init_pages_with_size_less_than_offset`
+    - Category: edge-case
+16. **snapshot2::init_pages source.end - source.start underflow** — when `action.source.end < action.source.start`, the subtraction panics (`attempt to subtract with overflow`) instead of returning error.
+    - File: `src/snapshot2.rs:234`
+    - Evidence: `tests/test_snapshot2_state_corruption.rs` → `test_snapshot2_init_pages_with_source_end_less_than_start`
+    - Category: malformed-input
 
 ## What Works
 

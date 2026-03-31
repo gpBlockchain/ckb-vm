@@ -3,10 +3,10 @@
     "null-input":       { "written": 15, "bugs_found": 1, "weight": 1.02 },
     "boundary":         { "written": 104, "bugs_found": 5, "weight": 1.98 },
     "error-path":       { "written": 34, "bugs_found": 0, "weight": 0.55 },
-    "edge-case":        { "written": 107, "bugs_found": 5, "weight": 2.22 },
+    "edge-case":        { "written": 110, "bugs_found": 8, "weight": 2.80 },
     "concurrency":      { "written": 0, "bugs_found": 0, "weight": 1.0 },
     "regression":       { "written": 0, "bugs_found": 0, "weight": 1.0 },
-    "malformed-input":  { "written": 36, "bugs_found": 2, "weight": 1.30 },
+    "malformed-input":  { "written": 37, "bugs_found": 3, "weight": 1.52 },
     "state-corruption": { "written": 38, "bugs_found": 0, "weight": 0.90 }
   },
   "bug_patterns": [
@@ -21,9 +21,12 @@
     { "pattern": "partial memory mutation on failing sparse store_bytes", "count": 1, "test_type": "boundary" },
     { "pattern": "partial memory mutation on failing sparse store_byte", "count": 1, "test_type": "boundary" },
     { "pattern": "partial memory mutation on failing sparse store64", "count": 1, "test_type": "boundary" },
-    { "pattern": "partial memory mutation on failing sparse store16", "count": 1, "test_type": "boundary" }
+    { "pattern": "partial memory mutation on failing sparse store16", "count": 1, "test_type": "boundary" },
+    { "pattern": "overflow in addr+offset accumulation", "count": 1, "test_type": "edge-case" },
+    { "pattern": "underflow in size-offset subtraction", "count": 1, "test_type": "edge-case" },
+    { "pattern": "underflow in source range subtraction", "count": 1, "test_type": "malformed-input" }
   ],
-  "last_updated": "iteration_33",
-  "total_tests_written": 333,
-  "total_bugs_found": 13
+  "last_updated": "iteration_34",
+  "total_tests_written": 340,
+  "total_bugs_found": 16
 }
