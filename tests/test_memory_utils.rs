@@ -1,4 +1,8 @@
-use ckb_vm::memory::{check_no_overflow, get_page_indices};
+use ckb_vm::memory::{
+    check_no_overflow, get_page_indices, load_c_string_byte_by_byte, sparse::SparseMemory,
+};
+use ckb_vm::Memory;
+use ckb_vm::Register;
 use ckb_vm_definitions::RISCV_PAGESIZE;
 
 #[test]
@@ -115,4 +119,67 @@ fn test_get_page_indices_wraparound_should_not_reverse_range() {
         start <= end,
         "page index range should not reverse on address overflow"
     );
+}
+
+// --- Iteration 36: load_c_string_byte_by_byte edge cases ---
+
+#[test]
+fn test_load_c_string_empty_string() {
+    let mut mem = SparseMemory::<u64>::new(4096);
+    mem.store8(&0u64, &0u8.into()).unwrap(); // null terminator at addr 0
+    let result = load_c_string_byte_by_byte(&mut mem, &0u64).unwrap();
+    assert_eq!(result.len(), 0);
+}
+
+#[test]
+fn test_load_c_string_single_char() {
+    let mut mem = SparseMemory::<u64>::new(4096);
+    mem.store8(&0u64, &b'A'.into()).unwrap();
+    mem.store8(&1u64, &0u8.into()).unwrap();
+    let result = load_c_string_byte_by_byte(&mut mem, &0u64).unwrap();
+    assert_eq!(&result[..], b"A");
+}
+
+#[test]
+fn test_load_c_string_long_string() {
+    let mut mem = SparseMemory::<u64>::new(8192);
+    let test_str = b"Hello, CKB-VM World!";
+    for (i, &b) in test_str.iter().enumerate() {
+        mem.store8(&(i as u64), &b.into()).unwrap();
+    }
+    mem.store8(&(test_str.len() as u64), &0u8.into()).unwrap();
+    let result = load_c_string_byte_by_byte(&mut mem, &0u64).unwrap();
+    assert_eq!(&result[..], test_str);
+}
+
+#[test]
+fn test_load_c_string_at_page_boundary() {
+    let mut mem = SparseMemory::<u64>::new(8192);
+    // String starting at last byte of page 0
+    mem.store8(&4095u64, &b'Z'.into()).unwrap();
+    mem.store8(&4096u64, &b'X'.into()).unwrap();
+    mem.store8(&4097u64, &0u8.into()).unwrap();
+    let result = load_c_string_byte_by_byte(&mut mem, &4095u64).unwrap();
+    assert_eq!(&result[..], b"ZX");
+}
+
+#[test]
+fn test_load_c_string_no_null_terminator() {
+    let mut mem = SparseMemory::<u64>::new(4096);
+    // Fill memory with non-zero values - no null terminator
+    for i in 0u64..128 {
+        mem.store8(&i, &0xFFu8.into()).unwrap();
+    }
+    // This should eventually error when it hits unmapped memory
+    let result = load_c_string_byte_by_byte(&mut mem, &0u64);
+    assert!(result.is_err());
+}
+
+#[test]
+fn test_load_c_string_at_high_address() {
+    let mut mem = SparseMemory::<u64>::new(8192);
+    mem.store8(&8000u64, &b'A'.into()).unwrap();
+    mem.store8(&8001u64, &0u8.into()).unwrap();
+    let result = load_c_string_byte_by_byte(&mut mem, &8000u64).unwrap();
+    assert_eq!(&result[..], b"A");
 }
