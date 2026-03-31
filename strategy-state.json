@@ -3,7 +3,7 @@
     "null-input":       { "written": 15, "bugs_found": 1, "weight": 1.02 },
     "boundary":         { "written": 73, "bugs_found": 0, "weight": 0.58 },
     "error-path":       { "written": 34, "bugs_found": 0, "weight": 0.58 },
-    "edge-case":        { "written": 89, "bugs_found": 1, "weight": 1.25 },
+    "edge-case":        { "written": 90, "bugs_found": 1, "weight": 1.25 },
     "concurrency":      { "written": 0, "bugs_found": 0, "weight": 1.0 },
     "regression":       { "written": 0, "bugs_found": 0, "weight": 1.0 },
     "malformed-input":  { "written": 34, "bugs_found": 0, "weight": 0.40 },
@@ -13,7 +13,7 @@
     { "pattern": "integer overflow/underflow", "count": 1, "test_type": "null-input" },
     { "pattern": "fusion failure in decoding", "count": 1, "test_type": "edge-case" }
   ],
-  "last_updated": "iteration_14",
-  "total_tests_written": 264,
+  "last_updated": "iteration_15",
+  "total_tests_written": 265,
   "total_bugs_found": 2
 }
