@@ -3,7 +3,8 @@ use ckb_vm::bits::{rounddown, roundup};
 use ckb_vm::error::{Error, OutOfBoundKind};
 use ckb_vm::machine::{DefaultCoreMachine, VERSION2};
 use ckb_vm::memory::{
-    check_no_overflow, flat::FlatMemory, get_page_indices, sparse::SparseMemory, wxorx::WXorXMemory,
+    check_no_overflow, flat::FlatMemory, get_page_indices, sparse::SparseMemory,
+    wxorx::WXorXMemory, FLAG_DIRTY, FLAG_EXECUTABLE, FLAG_FREEZED, FLAG_WRITABLE,
 };
 use ckb_vm::{Memory, Register, SupportMachine, ISA_IMC};
 
