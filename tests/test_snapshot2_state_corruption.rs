@@ -150,7 +150,11 @@ pub fn test_snapshot2_resume_rejects_short_read_from_data_source() {
 
     let result = ctx.resume(&mut core, &snapshot);
     assert!(result.is_err());
-    assert_eq!(result.unwrap_err(), Error::InvalidVersion);
+    // ShortReadDataSource returns half the data, so page is unaligned
+    assert!(matches!(
+        result.unwrap_err(),
+        Error::MemPageUnalignedAccess(_)
+    ));
 }
 
 // --- Iteration 34: snapshot2 mark_program/init_pages overflow tests ---
