@@ -557,3 +557,200 @@ fn test_default_core_machine_memory_size() {
     assert_eq!(machine.cycles(), 0);
     assert_eq!(machine.max_cycles(), 1000);
 }
+
+// --- Iteration 33: boundary tests for memory operations ---
+
+#[test]
+fn test_wxorx_store_at_exact_page_boundary() {
+    // Store 1 byte at the very last byte of page 0
+    let mut mem = WXorXMemory::<SparseMemory<u64>>::new(8192);
+    mem.init_pages(0, 8192, FLAG_FREEZED, None, 0).unwrap();
+    mem.store8(&4095u64, &0xAAu8.into()).unwrap();
+    assert_eq!(mem.load8(&4095u64).unwrap().to_u8(), 0xAA);
+}
+
+#[test]
+fn test_wxorx_store32_at_page_boundary_straddling() {
+    // Store 4 bytes starting at 4094 (spans page boundary 4096)
+    let mut mem = WXorXMemory::<SparseMemory<u64>>::new(8192);
+    mem.init_pages(0, 8192, FLAG_FREEZED, None, 0).unwrap();
+    mem.store32(&4094u64, &0xDEADBEEFu32.into()).unwrap();
+    let val = mem.load32(&4094u64).unwrap().to_u32();
+    assert_eq!(val, 0xDEADBEEF);
+}
+
+#[test]
+fn test_wxorx_store8_at_last_byte_of_memory() {
+    let mut mem = WXorXMemory::<SparseMemory<u64>>::new(4096);
+    mem.init_pages(0, 4096, FLAG_FREEZED, None, 0).unwrap();
+    mem.store8(&4095u64, &0xBBu8.into()).unwrap();
+    assert_eq!(mem.load8(&4095u64).unwrap().to_u8(), 0xBB);
+}
+
+#[test]
+fn test_wxorx_store16_at_last_two_bytes_fails() {
+    let mut mem = WXorXMemory::<SparseMemory<u64>>::new(4096);
+    mem.init_pages(0, 4096, FLAG_FREEZED, None, 0).unwrap();
+    // addr=4095, size=2 → 4095+2 = 4097 > 4096, should fail
+    let result = mem.store16(&4095u64, &0xCCDDu16.into());
+    assert!(result.is_err());
+}
+
+#[test]
+fn test_wxorx_permission_transition_writable_to_executable() {
+    let mut mem = WXorXMemory::<SparseMemory<u64>>::new(8192);
+    // Page 0: writable, page 1: executable
+    mem.init_pages(0, 4096, FLAG_WRITABLE | FLAG_FREEZED, None, 0)
+        .unwrap();
+    mem.init_pages(4096, 4096, FLAG_EXECUTABLE | FLAG_FREEZED, None, 0)
+        .unwrap();
+
+    // Write to page 0 should work
+    mem.store8(&0u64, &1u8.into()).unwrap();
+    // Execute from page 1 should work
+    assert!(mem.execute_load16(4096).is_ok());
+    // Write to page 1 should fail
+    assert!(mem.store8(&4096u64, &1u8.into()).is_err());
+}
+
+#[test]
+fn test_flat_store_at_last_valid_byte() {
+    let mut mem = FlatMemory::<u64>::new(4096);
+    mem.store8(&4095u64, &0xEEu8.into()).unwrap();
+    assert_eq!(mem.load8(&4095u64).unwrap().to_u8(), 0xEE);
+}
+
+#[test]
+fn test_flat_store16_at_last_byte_fails() {
+    let mut mem = FlatMemory::<u64>::new(4096);
+    let result = mem.store16(&4095u64, &0x1234u16.into());
+    assert!(result.is_err());
+}
+
+#[test]
+fn test_flat_store64_at_exact_middle() {
+    let mut mem = FlatMemory::<u64>::new(4096);
+    let addr = 4096u64 - 8;
+    mem.store64(&addr, &0x1122334455667788u64.into()).unwrap();
+    assert_eq!(mem.load64(&addr).unwrap().to_u64(), 0x1122334455667788);
+}
+
+#[test]
+fn test_sparse_store_bytes_zero_length() {
+    let mut mem = SparseMemory::<u64>::new(4096);
+    let result = mem.store_bytes(0, &[]);
+    assert!(result.is_ok(), "Zero-length store should succeed");
+}
+
+#[test]
+fn test_sparse_store_bytes_at_zero_addr() {
+    let mut mem = SparseMemory::<u64>::new(4096);
+    mem.store_bytes(0, &[0x42; 100]).unwrap();
+    assert_eq!(mem.load8(&0u64).unwrap().to_u8(), 0x42);
+    assert_eq!(mem.load8(&99u64).unwrap().to_u8(), 0x42);
+}
+
+#[test]
+fn test_sparse_store_byte_zero_count() {
+    let mut mem = SparseMemory::<u64>::new(4096);
+    let result = mem.store_byte(0, 0, 0xFF);
+    assert!(result.is_ok(), "store_byte with count=0 should succeed");
+}
+
+#[test]
+fn test_get_page_indices_single_byte_at_page_start() {
+    let (start, end) = get_page_indices(0, 1);
+    assert_eq!(start, 0);
+    assert_eq!(end, 0);
+}
+
+#[test]
+fn test_get_page_indices_single_byte_at_page_end() {
+    let (start, end) = get_page_indices(4095, 1);
+    assert_eq!(start, 0);
+    assert_eq!(end, 0);
+}
+
+#[test]
+fn test_get_page_indices_exactly_two_pages() {
+    // addr=4095, size=2 → pages 0 and 1
+    let (start, end) = get_page_indices(4095, 2);
+    assert_eq!(start, 0);
+    assert_eq!(end, 1);
+}
+
+#[test]
+fn test_get_page_indices_full_three_pages() {
+    // addr=0, size=12288 → pages 0, 1, 2
+    let (start, end) = get_page_indices(0, 12288);
+    assert_eq!(start, 0);
+    assert_eq!(end, 2);
+}
+
+#[test]
+fn test_check_no_overflow_at_exact_limit() {
+    // addr=4088, size=8, memory_size=4096 → should pass
+    let result = check_no_overflow(4088, 8, 4096);
+    assert!(result.is_ok());
+}
+
+#[test]
+fn test_check_no_overflow_one_past_limit() {
+    // addr=4089, size=8, memory_size=4096 → should fail
+    let result = check_no_overflow(4089, 8, 4096);
+    assert!(result.is_err());
+}
+
+#[test]
+fn test_check_no_overflow_addr_at_memory_size() {
+    // addr=4096, size=1, memory_size=4096 → should fail (addr >= memory_size)
+    let result = check_no_overflow(4096, 1, 4096);
+    assert!(result.is_err());
+}
+
+#[test]
+fn test_wxorx_cross_page_store_with_exec_on_second_page() {
+    // First page writable, second page executable
+    // Store straddling boundary should fail because second page is not writable
+    let mut mem = WXorXMemory::<SparseMemory<u64>>::new(8192);
+    mem.init_pages(0, 4096, FLAG_WRITABLE | FLAG_FREEZED, None, 0)
+        .unwrap();
+    mem.init_pages(4096, 4096, FLAG_EXECUTABLE | FLAG_FREEZED, None, 0)
+        .unwrap();
+
+    // store16 at 4095 straddles to page 1 which is exec-only → should fail
+    let result = mem.store16(&4095u64, &0xBEEFu16.into());
+    assert!(result.is_err(), "Cross-page write to exec page should fail");
+}
+
+#[test]
+fn test_flat_memory_roundtrip_small_values() {
+    let mut mem = FlatMemory::<u64>::new(4096);
+    for i in 0u64..256 {
+        mem.store8(&i, &(i as u8).into()).unwrap();
+    }
+    for i in 0u64..256 {
+        assert_eq!(mem.load8(&i).unwrap().to_u8(), i as u8);
+    }
+}
+
+#[test]
+fn test_sparse_memory_roundtrip_across_pages() {
+    let mut mem = SparseMemory::<u64>::new(8192);
+    // Write across two pages
+    mem.store64(&4090u64, &0xAAAABBBBCCCCDDDDu64.into())
+        .unwrap();
+    // Read back
+    let val = mem.load64(&4090u64).unwrap().to_u64();
+    assert_eq!(val, 0xAAAABBBBCCCCDDDD);
+}
+
+#[test]
+fn test_wxorx_store_byte_at_page_start_after_init() {
+    let mut mem = WXorXMemory::<SparseMemory<u64>>::new(8192);
+    mem.init_pages(0, 8192, FLAG_FREEZED, None, 0).unwrap();
+    mem.store_byte(0, 1, 0x11).unwrap();
+    mem.store_byte(4096, 1, 0x22).unwrap();
+    assert_eq!(mem.load8(&0u64).unwrap().to_u8(), 0x11);
+    assert_eq!(mem.load8(&4096u64).unwrap().to_u8(), 0x22);
+}
