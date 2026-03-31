@@ -478,3 +478,111 @@ pub fn test_clang() {
         assert!(ret_asm.is_ok());
     }
 }
+
+// --- Iteration 35: DefaultCoreMachine and load_program edge cases ---
+
+#[test]
+pub fn test_default_core_machine_zero_max_cycles() {
+    let core_machine = DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION1, 0);
+    let mut machine = RustDefaultMachineBuilder::new(core_machine).build();
+    let buffer = fs::read("tests/programs/nop").unwrap().into();
+    machine
+        .load_program(&buffer, [Ok("nop".into())].into_iter())
+        .unwrap();
+    let result = machine.run();
+    assert!(result.is_err());
+    assert_eq!(result.unwrap_err(), Error::CyclesExceeded);
+}
+
+#[test]
+pub fn test_default_core_machine_one_max_cycle() {
+    let core_machine = DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION1, 1);
+    let mut machine = RustDefaultMachineBuilder::new(core_machine)
+        .instruction_cycle_func(Box::new(constant_cycles))
+        .build();
+    let buffer = fs::read("tests/programs/nop").unwrap().into();
+    machine
+        .load_program(&buffer, [Ok("nop".into())].into_iter())
+        .unwrap();
+    let result = machine.run();
+    // Should hit cycle limit quickly
+    assert!(result.is_err());
+}
+
+#[test]
+pub fn test_default_core_machine_with_zero_memory() {
+    // Memory size 0 should cause issues on any access
+    let core_machine =
+        DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION1, u64::MAX);
+    let mut machine = RustDefaultMachineBuilder::new(core_machine).build();
+    // Try to load program - should fail because memory is 0
+    let buffer = fs::read("tests/programs/nop").unwrap().into();
+    let result = machine.load_program(&buffer, [Ok("nop".into())].into_iter());
+    assert!(result.is_err());
+}
+
+#[test]
+pub fn test_load_program_with_empty_args() {
+    let core_machine =
+        DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION1, u64::MAX);
+    let mut machine = RustDefaultMachineBuilder::new(core_machine).build();
+    let buffer = fs::read("tests/programs/nop").unwrap().into();
+    let result = machine.load_program(&buffer, std::iter::empty());
+    assert!(result.is_ok());
+}
+
+#[test]
+pub fn test_add_cycles_at_zero() {
+    let mut core_machine =
+        DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION1, 100);
+    core_machine.add_cycles(0).unwrap();
+    assert_eq!(core_machine.cycles(), 0);
+}
+
+#[test]
+pub fn test_add_cycles_exactly_at_limit() {
+    let mut core_machine =
+        DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION1, 100);
+    core_machine.add_cycles(100).unwrap();
+    assert_eq!(core_machine.cycles(), 100);
+}
+
+#[test]
+pub fn test_add_cycles_one_past_limit() {
+    let mut core_machine =
+        DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION1, 100);
+    let result = core_machine.add_cycles(101);
+    assert!(result.is_err());
+    assert_eq!(result.unwrap_err(), Error::CyclesExceeded);
+}
+
+#[test]
+pub fn test_set_cycles_value() {
+    let mut core_machine =
+        DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION1, u64::MAX);
+    core_machine.set_cycles(0);
+    assert_eq!(core_machine.cycles(), 0);
+    core_machine.set_cycles(u64::MAX);
+    assert_eq!(core_machine.cycles(), u64::MAX);
+}
+
+#[test]
+pub fn test_set_max_cycles_value() {
+    let mut core_machine =
+        DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION1, 100);
+    assert_eq!(core_machine.max_cycles(), 100);
+    core_machine.set_max_cycles(200);
+    assert_eq!(core_machine.max_cycles(), 200);
+}
+
+#[test]
+pub fn test_version_check() {
+    let machine_v0 = DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION0, u64::MAX);
+    assert_eq!(machine_v0.version(), VERSION0);
+
+    let machine_v1 = DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION1, u64::MAX);
+    assert_eq!(machine_v1.version(), VERSION1);
+
+    let machine_v2 = DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION2, u64::MAX);
+    assert_eq!(machine_v2.version(), VERSION2);
+}
