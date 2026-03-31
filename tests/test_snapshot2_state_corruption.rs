@@ -3,7 +3,7 @@ use bytes::Bytes;
 use ckb_vm::machine::{DefaultCoreMachine, VERSION0, VERSION1, VERSION2};
 use ckb_vm::memory::Memory;
 use ckb_vm::snapshot2::{DataSource, Snapshot2, Snapshot2Context};
-use ckb_vm::{CoreMachine, Error, SparseMemory, SupportMachine, ISA_IMC};
+use ckb_vm::{CoreMachine, Error, Register, SparseMemory, SupportMachine, ISA_IMC};
 
 #[derive(Default, Clone, PartialEq)]
 struct MockDataSource {
@@ -243,7 +243,7 @@ pub fn test_snapshot2_resume_clears_previous_context_pages() {
         pages_from_source: vec![],
         dirty_pages: vec![],
         version: VERSION1,
-        registers: [0u64; 33],
+        registers: [0u64; 32],
         pc: 0,
         cycles: 0,
         max_cycles: u64::MAX,
@@ -272,7 +272,7 @@ pub fn test_snapshot2_resume_with_version_mismatch_version0_vs_version1() {
         pages_from_source: vec![],
         dirty_pages: vec![],
         version: VERSION0,
-        registers: [0u64; 33],
+        registers: [0u64; 32],
         pc: 0,
         cycles: 0,
         max_cycles: u64::MAX,
@@ -296,7 +296,7 @@ pub fn test_snapshot2_resume_preserves_load_reservation_address() {
         pages_from_source: vec![],
         dirty_pages: vec![],
         version: VERSION1,
-        registers: [0u64; 33],
+        registers: [0u64; 32],
         pc: 0x1000,
         cycles: 100,
         max_cycles: 500,
@@ -318,7 +318,7 @@ pub fn test_snapshot2_resume_sets_registers_and_pc() {
     let mut ctx = Snapshot2Context::new(source);
     let mut core = DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION1, u64::MAX);
 
-    let mut registers = [0u64; 33];
+    let mut registers = [0u64; 32];
     registers[1] = 0x1111;
     registers[2] = 0x2222;
     registers[31] = 0xFFFF;
@@ -356,7 +356,7 @@ pub fn test_snapshot2_resume_with_empty_snapshot() {
         pages_from_source: vec![],
         dirty_pages: vec![],
         version: VERSION1,
-        registers: [0u64; 33],
+        registers: [0u64; 32],
         pc: 0,
         cycles: 0,
         max_cycles: u64::MAX,
@@ -380,7 +380,7 @@ pub fn test_snapshot2_resume_with_only_dirty_pages() {
         pages_from_source: vec![],
         dirty_pages: vec![(0x10000, 0, dirty_content)],
         version: VERSION1,
-        registers: [0u64; 33],
+        registers: [0u64; 32],
         pc: 0,
         cycles: 0,
         max_cycles: u64::MAX,
@@ -408,7 +408,7 @@ pub fn test_snapshot2_resume_dirty_page_unaligned_address_rejected() {
         pages_from_source: vec![],
         dirty_pages: vec![(0x10001, 0, vec![0xBB; 4096])],
         version: VERSION1,
-        registers: [0u64; 33],
+        registers: [0u64; 32],
         pc: 0,
         cycles: 0,
         max_cycles: u64::MAX,
@@ -436,7 +436,7 @@ pub fn test_snapshot2_resume_dirty_page_unaligned_length_rejected() {
         pages_from_source: vec![],
         dirty_pages: vec![(0x10000, 0, vec![0xCC; 4000])],
         version: VERSION1,
-        registers: [0u64; 33],
+        registers: [0u64; 32],
         pc: 0,
         cycles: 0,
         max_cycles: u64::MAX,
@@ -464,7 +464,7 @@ pub fn test_snapshot2_resume_source_page_unaligned_address_rejected() {
         pages_from_source: vec![(0x10001, 0, 1, 0, 4096)],
         dirty_pages: vec![],
         version: VERSION1,
-        registers: [0u64; 33],
+        registers: [0u64; 32],
         pc: 0,
         cycles: 0,
         max_cycles: u64::MAX,
@@ -489,7 +489,7 @@ pub fn test_snapshot2_resume_data_source_returns_none() {
         pages_from_source: vec![(0x4000, 0, 1, 0, 4096)],
         dirty_pages: vec![],
         version: VERSION1,
-        registers: [0u64; 33],
+        registers: [0u64; 32],
         pc: 0,
         cycles: 0,
         max_cycles: u64::MAX,
@@ -514,7 +514,7 @@ pub fn test_snapshot2_resume_multiple_noncontiguous_source_pages() {
         pages_from_source: vec![(0x10000, 0, 1, 0, 4096), (0x20000, 0, 1, 4096, 4096)],
         dirty_pages: vec![],
         version: VERSION1,
-        registers: [0u64; 33],
+        registers: [0u64; 32],
         pc: 0,
         cycles: 0,
         max_cycles: u64::MAX,
@@ -537,7 +537,7 @@ pub fn test_snapshot2_resume_with_pc_at_zero() {
         pages_from_source: vec![],
         dirty_pages: vec![],
         version: VERSION1,
-        registers: [0u64; 33],
+        registers: [0u64; 32],
         pc: 0,
         cycles: 0,
         max_cycles: u64::MAX,
@@ -560,7 +560,7 @@ pub fn test_snapshot2_resume_with_max_cycles() {
         pages_from_source: vec![],
         dirty_pages: vec![],
         version: VERSION1,
-        registers: [0u64; 33],
+        registers: [0u64; 32],
         pc: 0,
         cycles: u64::MAX - 1,
         max_cycles: u64::MAX,
@@ -587,7 +587,7 @@ pub fn test_snapshot2_resume_with_multiple_dirty_pages() {
             (0x30000, 0, vec![0x33; 4096]),
         ],
         version: VERSION1,
-        registers: [0u64; 33],
+        registers: [0u64; 32],
         pc: 0,
         cycles: 0,
         max_cycles: u64::MAX,
@@ -610,7 +610,7 @@ pub fn test_snapshot2_resume_twice_overwrites_state() {
     let mut core = DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION1, u64::MAX);
 
     // First resume with registers set to pattern A
-    let mut regs1 = [0u64; 33];
+    let mut regs1 = [0u64; 32];
     regs1[1] = 0xAAAA;
     let snapshot1 = Snapshot2 {
         pages_from_source: vec![],
@@ -627,7 +627,7 @@ pub fn test_snapshot2_resume_twice_overwrites_state() {
     assert_eq!(core.memory_mut().load8(&(0x10000u64)).unwrap(), 0xAA);
 
     // Second resume with registers set to pattern B (should fully overwrite)
-    let mut regs2 = [0u64; 33];
+    let mut regs2 = [0u64; 32];
     regs2[1] = 0xBBBB;
     let snapshot2 = Snapshot2 {
         pages_from_source: vec![],
@@ -660,7 +660,7 @@ pub fn test_snapshot2_resume_and_make_snapshot_roundtrip() {
     let mut ctx = Snapshot2Context::new(source);
     let mut core = DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION1, u64::MAX);
 
-    let mut registers = [0u64; 33];
+    let mut registers = [0u64; 32];
     registers[1] = 0x1234;
     registers[10] = 0x5678;
 
@@ -703,7 +703,7 @@ pub fn test_snapshot2_resume_with_source_data_at_nonzero_offset() {
         pages_from_source: vec![(0x10000, 0, 1, 4096, 4096)],
         dirty_pages: vec![],
         version: VERSION1,
-        registers: [0u64; 33],
+        registers: [0u64; 32],
         pc: 0,
         cycles: 0,
         max_cycles: u64::MAX,
@@ -731,7 +731,7 @@ pub fn test_snapshot2_resume_with_both_source_and_dirty_pages() {
         pages_from_source: vec![(0x10000, 0, 1, 0, 4096)],
         dirty_pages: vec![(0x20000, 0, vec![0xEE; 4096])],
         version: VERSION1,
-        registers: [0u64; 33],
+        registers: [0u64; 32],
         pc: 0,
         cycles: 0,
         max_cycles: u64::MAX,
@@ -757,7 +757,7 @@ pub fn test_snapshot2_resume_with_version2() {
         pages_from_source: vec![],
         dirty_pages: vec![],
         version: VERSION2,
-        registers: [0u64; 33],
+        registers: [0u64; 32],
         pc: 0,
         cycles: 0,
         max_cycles: u64::MAX,
@@ -780,7 +780,7 @@ pub fn test_snapshot2_resume_version2_machine_version1_snapshot_fails() {
         pages_from_source: vec![],
         dirty_pages: vec![],
         version: VERSION1,
-        registers: [0u64; 33],
+        registers: [0u64; 32],
         pc: 0,
         cycles: 0,
         max_cycles: u64::MAX,
