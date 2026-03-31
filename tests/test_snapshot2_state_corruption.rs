@@ -1,5 +1,6 @@
 pub mod machine_build;
 use bytes::Bytes;
+use ckb_vm::elf::{LoadingAction, ProgramMetadata};
 use ckb_vm::machine::{DefaultCoreMachine, VERSION0, VERSION1, VERSION2};
 use ckb_vm::memory::Memory;
 use ckb_vm::snapshot2::{DataSource, Snapshot2, Snapshot2Context};
@@ -149,6 +150,141 @@ pub fn test_snapshot2_resume_rejects_short_read_from_data_source() {
 
     let result = ctx.resume(&mut core, &snapshot);
     assert!(result.is_err());
+    assert_eq!(result.unwrap_err(), Error::InvalidVersion);
+}
+
+// --- Iteration 34: snapshot2 mark_program/init_pages overflow tests ---
+
+#[test]
+pub fn test_snapshot2_mark_program_with_overflowing_addr_plus_offset() {
+    let source = MockDataSource {
+        data: Bytes::from(vec![0u8; 8192]),
+    };
+    let mut ctx = Snapshot2Context::new(source);
+    let mut core = DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION1, u64::MAX);
+
+    // Create LoadingAction where addr + offset_from_addr overflows
+    let metadata = ProgramMetadata {
+        actions: vec![LoadingAction {
+            addr: u64::MAX,
+            size: 4096,
+            flags: 0,
+            source: 0..4096,
+            offset_from_addr: 1,
+        }],
+        entry: 0,
+    };
+
+    // mark_program should handle overflow gracefully
+    let result = ctx.mark_program(&mut core, &metadata, &1u64, 0);
+    // This will likely error or panic due to addr + offset overflow
+    // The behavior depends on whether the code handles wrapping
+    let _ = result;
+}
+
+#[test]
+pub fn test_snapshot2_init_pages_with_size_less_than_offset() {
+    let source = MockDataSource {
+        data: Bytes::from(vec![0u8; 8192]),
+    };
+    let mut ctx = Snapshot2Context::new(source);
+    let mut core = DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION1, u64::MAX);
+
+    // offset_from_addr > size → action.size - action.offset_from_addr underflows
+    let metadata = ProgramMetadata {
+        actions: vec![LoadingAction {
+            addr: 0x10000,
+            size: 100,
+            flags: 0,
+            source: 0..4096,
+            offset_from_addr: 200,
+        }],
+        entry: 0,
+    };
+
+    let result = ctx.mark_program(&mut core, &metadata, &1u64, 0);
+    // This could produce unexpected results due to underflow in length calculation
+    let _ = result;
+}
+
+#[test]
+pub fn test_snapshot2_init_pages_with_source_end_less_than_start() {
+    let source = MockDataSource {
+        data: Bytes::from(vec![0u8; 8192]),
+    };
+    let mut ctx = Snapshot2Context::new(source);
+    let mut core = DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION1, u64::MAX);
+
+    // source.end < source.start → underflow
+    let metadata = ProgramMetadata {
+        actions: vec![LoadingAction {
+            addr: 0x10000,
+            size: 4096,
+            flags: 0,
+            source: 4096..100,
+            offset_from_addr: 0,
+        }],
+        entry: 0,
+    };
+
+    let result = ctx.mark_program(&mut core, &metadata, &1u64, 0);
+    // source.end - source.start underflows → produces huge length
+    let _ = result;
+}
+
+#[test]
+pub fn test_snapshot2_make_snapshot_empty_machine() {
+    let source = MockDataSource {
+        data: Bytes::from(vec![0u8; 4096]),
+    };
+    let mut ctx = Snapshot2Context::new(source);
+    let mut core = DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION1, u64::MAX);
+
+    let snapshot = ctx.make_snapshot(&mut core).unwrap();
+    assert!(snapshot.pages_from_source.is_empty());
+    assert!(snapshot.dirty_pages.is_empty());
+    assert_eq!(snapshot.version, VERSION1);
+    assert_eq!(snapshot.cycles, 0);
+}
+
+#[test]
+pub fn test_snapshot2_store_bytes_with_zero_length() {
+    let source = MockDataSource {
+        data: Bytes::from(vec![0u8; 4096]),
+    };
+    let mut ctx = Snapshot2Context::new(source);
+    let mut core = DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION1, u64::MAX);
+
+    // store_bytes with length=0 should work or return an appropriate error
+    let result = ctx.store_bytes(&mut core, 0x10000, &1u64, 0, 0, 0x20000);
+    // This calls load_data with length=0 which may return None or empty data
+    let _ = result;
+}
+
+#[test]
+pub fn test_snapshot2_resume_then_store_bytes() {
+    let source = MockDataSource {
+        data: Bytes::from(vec![0xAA; 8192]),
+    };
+    let mut ctx = Snapshot2Context::new(source);
+    let mut core = DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION1, u64::MAX);
+
+    // Resume from empty snapshot
+    let snapshot = Snapshot2 {
+        pages_from_source: vec![],
+        dirty_pages: vec![],
+        version: VERSION1,
+        registers: [0u64; 32],
+        pc: 0,
+        cycles: 0,
+        max_cycles: u64::MAX,
+        load_reservation_address: 0,
+    };
+    ctx.resume(&mut core, &snapshot).unwrap();
+
+    // Now store_bytes - should work after resume
+    let result = ctx.store_bytes(&mut core, 0x10000, &1u64, 0, 4096, 0x20000);
+    assert!(result.is_ok());
 }
 
 #[test]
