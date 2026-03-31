@@ -1,6 +1,6 @@
 {
   "test_types": {
-    "null-input":       { "written": 0, "bugs_found": 0, "weight": 1.0 },
+    "null-input":       { "written": 15, "bugs_found": 1, "weight": 1.02 },
     "boundary":         { "written": 42, "bugs_found": 0, "weight": 0.58 },
     "error-path":       { "written": 34, "bugs_found": 0, "weight": 0.58 },
     "edge-case":        { "written": 68, "bugs_found": 0, "weight": 0.40 },
@@ -9,8 +9,10 @@
     "malformed-input":  { "written": 31, "bugs_found": 0, "weight": 0.40 },
     "state-corruption": { "written": 0, "bugs_found": 0, "weight": 1.0 }
   },
-  "bug_patterns": [],
-  "last_updated": "iteration_5",
-  "total_tests_written": 175,
-  "total_bugs_found": 0
+  "bug_patterns": [
+    { "pattern": "integer overflow/underflow", "count": 1, "test_type": "null-input" }
+  ],
+  "last_updated": "iteration_6",
+  "total_tests_written": 190,
+  "total_bugs_found": 1
 }

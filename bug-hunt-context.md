@@ -8,7 +8,7 @@ CKB-VM is Nervos CKB's RISC-V virtual machine implementation in Rust. It support
 
 1. **Instruction decoding** — decode_mop and decode_raw with complex MOP patterns
 2. **Snapshot/resume** — snapshot2 dirty page coalescing, DataSource failures
-3. **Stack initialization** — oversized arguments, empty args, null bytes in strings
+3. ~~**Stack initialization**~~ — tested: empty args, empty Bytes, zero stack size, large args, error propagation
 4. **WXorX memory permissions** — write-then-execute, flag edge cases
 5. **ASM memory checks** — writable/executable/inited checks with boundary addresses
 6. **Cycle limit edge cases** — exactly at limit, one below, overflow
@@ -17,7 +17,10 @@ CKB-VM is Nervos CKB's RISC-V virtual machine implementation in Rust. It support
 
 ## Known Bugs
 
-(None found — 347 tests passing, 0 failing)
+1. **initialize_stack integer underflow** — when stack_size=0 and version >= VERSION1 with empty args, `origin_sp - argc_size` panics (attempt to subtract with overflow). Should return `MemOutOfStack` error instead.
+   - File: `src/machine/mod.rs:203`
+   - Evidence: `tests/test_initialize_stack.rs` → `test_initialize_stack_zero_stack_size` (#[should_panic])
+   - Category: null-input / boundary
 
 ## What Works
 
@@ -54,3 +57,4 @@ CKB-VM is Nervos CKB's RISC-V virtual machine implementation in Rust. It support
 | edge-case | test-added | 3 | 68 | iteration 4 |
 | boundary | test-added | 1 | 42 | iteration 3 |
 | error-path | test-added | 1 | 34 | iteration 5 |
+| null-input | bug-found | 1 | 15 | iteration 6 |
