@@ -632,11 +632,8 @@ pub fn test_snapshot2_resume_data_source_returns_none() {
 
     let result = ctx.resume(&mut core, &snapshot);
     assert!(result.is_err());
-    // ShortReadDataSource returns half the data, so page is unaligned
-    assert!(matches!(
-        result.unwrap_err(),
-        Error::MemPageUnalignedAccess(_)
-    ));
+    // FailingDataSource always returns None → SnapshotDataLoadError
+    assert_eq!(result.unwrap_err(), Error::SnapshotDataLoadError);
 }
 
 #[test]
