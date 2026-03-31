@@ -1,7 +1,7 @@
 {
   "test_types": {
     "null-input":       { "written": 15, "bugs_found": 1, "weight": 1.02 },
-    "boundary":         { "written": 42, "bugs_found": 0, "weight": 0.58 },
+    "boundary":         { "written": 73, "bugs_found": 0, "weight": 0.58 },
     "error-path":       { "written": 34, "bugs_found": 0, "weight": 0.58 },
     "edge-case":        { "written": 83, "bugs_found": 0, "weight": 0.40 },
     "concurrency":      { "written": 0, "bugs_found": 0, "weight": 1.0 },
@@ -12,7 +12,7 @@
   "bug_patterns": [
     { "pattern": "integer overflow/underflow", "count": 1, "test_type": "null-input" }
   ],
-  "last_updated": "iteration_8",
-  "total_tests_written": 221,
+  "last_updated": "iteration_10",
+  "total_tests_written": 252,
   "total_bugs_found": 1
 }
