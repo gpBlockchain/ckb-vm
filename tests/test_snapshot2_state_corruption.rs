@@ -1,9 +1,9 @@
 pub mod machine_build;
 use bytes::Bytes;
-use ckb_vm::machine::{DefaultCoreMachine, VERSION1};
+use ckb_vm::machine::{DefaultCoreMachine, VERSION0, VERSION1, VERSION2};
 use ckb_vm::memory::Memory;
-use ckb_vm::snapshot2::{DataSource, Snapshot2Context};
-use ckb_vm::{CoreMachine, SparseMemory, SupportMachine, ISA_IMC};
+use ckb_vm::snapshot2::{DataSource, Snapshot2, Snapshot2Context};
+use ckb_vm::{CoreMachine, Error, SparseMemory, SupportMachine, ISA_IMC};
 
 #[derive(Default, Clone, PartialEq)]
 struct MockDataSource {
@@ -209,4 +209,585 @@ pub fn test_snapshot2_untrack_pages_wraparound_large_length_should_error() {
 
     let result = ctx.untrack_pages(&mut core, u64::MAX, 4096);
     assert!(result.is_err());
+}
+
+// --- Iteration 31: snapshot2::resume state-corruption tests ---
+
+#[derive(Default, Clone, PartialEq)]
+struct FailingDataSource;
+
+impl DataSource<u64> for FailingDataSource {
+    fn load_data(&self, _id: &u64, _offset: u64, _length: u64) -> Option<(Bytes, u64)> {
+        None
+    }
+}
+
+#[test]
+pub fn test_snapshot2_resume_clears_previous_context_pages() {
+    // After resume, the Snapshot2Context should have cleared its internal pages map
+    let source = MockDataSource {
+        data: Bytes::from(vec![0xAB; 8192]),
+    };
+    let mut ctx = Snapshot2Context::new(source);
+    let mut core = DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION1, u64::MAX);
+
+    // Track some pages first
+    let _ = ctx.track_pages(&mut core, 0x0, 4096, &1u64, 0).unwrap();
+
+    // Verify pages were tracked by making a snapshot
+    let snap_before = ctx.make_snapshot(&mut core).unwrap();
+    assert!(!snap_before.pages_from_source.is_empty());
+
+    // Now resume from a different snapshot - should clear old state
+    let mut snapshot = Snapshot2 {
+        pages_from_source: vec![],
+        dirty_pages: vec![],
+        version: VERSION1,
+        registers: [0u64; 33],
+        pc: 0,
+        cycles: 0,
+        max_cycles: u64::MAX,
+        load_reservation_address: 0,
+    };
+    ctx.resume(&mut core, &snapshot).unwrap();
+
+    // After resume, internal pages should be cleared
+    let snap_after = ctx.make_snapshot(&mut core).unwrap();
+    assert!(
+        snap_after.pages_from_source.is_empty(),
+        "resume should clear previous tracked pages"
+    );
+}
+
+#[test]
+pub fn test_snapshot2_resume_with_version_mismatch_version0_vs_version1() {
+    let source = MockDataSource {
+        data: Bytes::from(vec![0u8; 4096]),
+    };
+    let mut ctx = Snapshot2Context::new(source);
+
+    let mut core = DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION1, u64::MAX);
+
+    let mut snapshot = Snapshot2 {
+        pages_from_source: vec![],
+        dirty_pages: vec![],
+        version: VERSION0,
+        registers: [0u64; 33],
+        pc: 0,
+        cycles: 0,
+        max_cycles: u64::MAX,
+        load_reservation_address: 0,
+    };
+
+    let result = ctx.resume(&mut core, &snapshot);
+    assert!(result.is_err());
+    assert_eq!(result.unwrap_err(), Error::InvalidVersion);
+}
+
+#[test]
+pub fn test_snapshot2_resume_preserves_load_reservation_address() {
+    let source = MockDataSource {
+        data: Bytes::from(vec![0u8; 4096]),
+    };
+    let mut ctx = Snapshot2Context::new(source);
+    let mut core = DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION1, u64::MAX);
+
+    let snapshot = Snapshot2 {
+        pages_from_source: vec![],
+        dirty_pages: vec![],
+        version: VERSION1,
+        registers: [0u64; 33],
+        pc: 0x1000,
+        cycles: 100,
+        max_cycles: 500,
+        load_reservation_address: 0xDEAD_BEEF,
+    };
+
+    ctx.resume(&mut core, &snapshot).unwrap();
+
+    // Verify the load reservation address was set via memory's lr
+    let lr = core.memory().lr().to_u64();
+    assert_eq!(lr, 0xDEAD_BEEF);
+}
+
+#[test]
+pub fn test_snapshot2_resume_sets_registers_and_pc() {
+    let source = MockDataSource {
+        data: Bytes::from(vec![0u8; 4096]),
+    };
+    let mut ctx = Snapshot2Context::new(source);
+    let mut core = DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION1, u64::MAX);
+
+    let mut registers = [0u64; 33];
+    registers[1] = 0x1111;
+    registers[2] = 0x2222;
+    registers[31] = 0xFFFF;
+
+    let snapshot = Snapshot2 {
+        pages_from_source: vec![],
+        dirty_pages: vec![],
+        version: VERSION1,
+        registers,
+        pc: 0x8000,
+        cycles: 42,
+        max_cycles: 1000,
+        load_reservation_address: 0,
+    };
+
+    ctx.resume(&mut core, &snapshot).unwrap();
+
+    assert_eq!(core.registers()[1].to_u64(), 0x1111);
+    assert_eq!(core.registers()[2].to_u64(), 0x2222);
+    assert_eq!(core.registers()[31].to_u64(), 0xFFFF);
+    assert_eq!(core.pc().to_u64(), 0x8000);
+    assert_eq!(core.cycles(), 42);
+    assert_eq!(core.max_cycles(), 1000);
+}
+
+#[test]
+pub fn test_snapshot2_resume_with_empty_snapshot() {
+    let source = MockDataSource {
+        data: Bytes::from(vec![0u8; 4096]),
+    };
+    let mut ctx = Snapshot2Context::new(source);
+    let mut core = DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION1, u64::MAX);
+
+    let snapshot = Snapshot2 {
+        pages_from_source: vec![],
+        dirty_pages: vec![],
+        version: VERSION1,
+        registers: [0u64; 33],
+        pc: 0,
+        cycles: 0,
+        max_cycles: u64::MAX,
+        load_reservation_address: 0,
+    };
+
+    let result = ctx.resume(&mut core, &snapshot);
+    assert!(result.is_ok());
+}
+
+#[test]
+pub fn test_snapshot2_resume_with_only_dirty_pages() {
+    let source = MockDataSource {
+        data: Bytes::from(vec![0u8; 4096]),
+    };
+    let mut ctx = Snapshot2Context::new(source);
+    let mut core = DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION1, u64::MAX);
+
+    let dirty_content = vec![0xAA; 4096];
+    let snapshot = Snapshot2 {
+        pages_from_source: vec![],
+        dirty_pages: vec![(0x10000, 0, dirty_content)],
+        version: VERSION1,
+        registers: [0u64; 33],
+        pc: 0,
+        cycles: 0,
+        max_cycles: u64::MAX,
+        load_reservation_address: 0,
+    };
+
+    let result = ctx.resume(&mut core, &snapshot);
+    assert!(result.is_ok());
+
+    // Verify the dirty page was written to memory
+    let val = core.memory_mut().load8(&(0x10000u64)).unwrap();
+    assert_eq!(val, 0xAA);
+}
+
+#[test]
+pub fn test_snapshot2_resume_dirty_page_unaligned_address_rejected() {
+    let source = MockDataSource {
+        data: Bytes::from(vec![0u8; 4096]),
+    };
+    let mut ctx = Snapshot2Context::new(source);
+    let mut core = DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION1, u64::MAX);
+
+    // Dirty page with unaligned address
+    let snapshot = Snapshot2 {
+        pages_from_source: vec![],
+        dirty_pages: vec![(0x10001, 0, vec![0xBB; 4096])],
+        version: VERSION1,
+        registers: [0u64; 33],
+        pc: 0,
+        cycles: 0,
+        max_cycles: u64::MAX,
+        load_reservation_address: 0,
+    };
+
+    let result = ctx.resume(&mut core, &snapshot);
+    assert!(result.is_err());
+    assert!(matches!(
+        result.unwrap_err(),
+        Error::MemPageUnalignedAccess(_)
+    ));
+}
+
+#[test]
+pub fn test_snapshot2_resume_dirty_page_unaligned_length_rejected() {
+    let source = MockDataSource {
+        data: Bytes::from(vec![0u8; 4096]),
+    };
+    let mut ctx = Snapshot2Context::new(source);
+    let mut core = DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION1, u64::MAX);
+
+    // Dirty page with length not multiple of PAGE_SIZE
+    let snapshot = Snapshot2 {
+        pages_from_source: vec![],
+        dirty_pages: vec![(0x10000, 0, vec![0xCC; 4000])],
+        version: VERSION1,
+        registers: [0u64; 33],
+        pc: 0,
+        cycles: 0,
+        max_cycles: u64::MAX,
+        load_reservation_address: 0,
+    };
+
+    let result = ctx.resume(&mut core, &snapshot);
+    assert!(result.is_err());
+    assert!(matches!(
+        result.unwrap_err(),
+        Error::MemPageUnalignedAccess(_)
+    ));
+}
+
+#[test]
+pub fn test_snapshot2_resume_source_page_unaligned_address_rejected() {
+    let source = MockDataSource {
+        data: Bytes::from(vec![0u8; 8192]),
+    };
+    let mut ctx = Snapshot2Context::new(source);
+    let mut core = DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION1, u64::MAX);
+
+    // Source page with unaligned address
+    let snapshot = Snapshot2 {
+        pages_from_source: vec![(0x10001, 0, 1, 0, 4096)],
+        dirty_pages: vec![],
+        version: VERSION1,
+        registers: [0u64; 33],
+        pc: 0,
+        cycles: 0,
+        max_cycles: u64::MAX,
+        load_reservation_address: 0,
+    };
+
+    let result = ctx.resume(&mut core, &snapshot);
+    assert!(result.is_err());
+    assert!(matches!(
+        result.unwrap_err(),
+        Error::MemPageUnalignedAccess(_)
+    ));
+}
+
+#[test]
+pub fn test_snapshot2_resume_data_source_returns_none() {
+    let source = FailingDataSource;
+    let mut ctx = Snapshot2Context::new(source);
+    let mut core = DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION1, u64::MAX);
+
+    let snapshot = Snapshot2 {
+        pages_from_source: vec![(0x4000, 0, 1, 0, 4096)],
+        dirty_pages: vec![],
+        version: VERSION1,
+        registers: [0u64; 33],
+        pc: 0,
+        cycles: 0,
+        max_cycles: u64::MAX,
+        load_reservation_address: 0,
+    };
+
+    let result = ctx.resume(&mut core, &snapshot);
+    assert!(result.is_err());
+    assert_eq!(result.unwrap_err(), Error::SnapshotDataLoadError);
+}
+
+#[test]
+pub fn test_snapshot2_resume_multiple_noncontiguous_source_pages() {
+    let source = MockDataSource {
+        data: Bytes::from(vec![0u8; 16384]),
+    };
+    let mut ctx = Snapshot2Context::new(source);
+    let mut core = DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION1, u64::MAX);
+
+    // Two non-contiguous pages from source
+    let snapshot = Snapshot2 {
+        pages_from_source: vec![(0x10000, 0, 1, 0, 4096), (0x20000, 0, 1, 4096, 4096)],
+        dirty_pages: vec![],
+        version: VERSION1,
+        registers: [0u64; 33],
+        pc: 0,
+        cycles: 0,
+        max_cycles: u64::MAX,
+        load_reservation_address: 0,
+    };
+
+    let result = ctx.resume(&mut core, &snapshot);
+    assert!(result.is_ok());
+}
+
+#[test]
+pub fn test_snapshot2_resume_with_pc_at_zero() {
+    let source = MockDataSource {
+        data: Bytes::from(vec![0u8; 4096]),
+    };
+    let mut ctx = Snapshot2Context::new(source);
+    let mut core = DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION1, u64::MAX);
+
+    let snapshot = Snapshot2 {
+        pages_from_source: vec![],
+        dirty_pages: vec![],
+        version: VERSION1,
+        registers: [0u64; 33],
+        pc: 0,
+        cycles: 0,
+        max_cycles: u64::MAX,
+        load_reservation_address: 0,
+    };
+
+    ctx.resume(&mut core, &snapshot).unwrap();
+    assert_eq!(core.pc().to_u64(), 0);
+}
+
+#[test]
+pub fn test_snapshot2_resume_with_max_cycles() {
+    let source = MockDataSource {
+        data: Bytes::from(vec![0u8; 4096]),
+    };
+    let mut ctx = Snapshot2Context::new(source);
+    let mut core = DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION1, u64::MAX);
+
+    let snapshot = Snapshot2 {
+        pages_from_source: vec![],
+        dirty_pages: vec![],
+        version: VERSION1,
+        registers: [0u64; 33],
+        pc: 0,
+        cycles: u64::MAX - 1,
+        max_cycles: u64::MAX,
+        load_reservation_address: 0,
+    };
+
+    ctx.resume(&mut core, &snapshot).unwrap();
+    assert_eq!(core.cycles(), u64::MAX - 1);
+}
+
+#[test]
+pub fn test_snapshot2_resume_with_multiple_dirty_pages() {
+    let source = MockDataSource {
+        data: Bytes::from(vec![0u8; 4096]),
+    };
+    let mut ctx = Snapshot2Context::new(source);
+    let mut core = DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION1, u64::MAX);
+
+    let snapshot = Snapshot2 {
+        pages_from_source: vec![],
+        dirty_pages: vec![
+            (0x10000, 0, vec![0x11; 4096]),
+            (0x20000, 0, vec![0x22; 4096]),
+            (0x30000, 0, vec![0x33; 4096]),
+        ],
+        version: VERSION1,
+        registers: [0u64; 33],
+        pc: 0,
+        cycles: 0,
+        max_cycles: u64::MAX,
+        load_reservation_address: 0,
+    };
+
+    ctx.resume(&mut core, &snapshot).unwrap();
+
+    assert_eq!(core.memory_mut().load8(&(0x10000u64)).unwrap(), 0x11);
+    assert_eq!(core.memory_mut().load8(&(0x20000u64)).unwrap(), 0x22);
+    assert_eq!(core.memory_mut().load8(&(0x30000u64)).unwrap(), 0x33);
+}
+
+#[test]
+pub fn test_snapshot2_resume_twice_overwrites_state() {
+    let source = MockDataSource {
+        data: Bytes::from(vec![0u8; 8192]),
+    };
+    let mut ctx = Snapshot2Context::new(source);
+    let mut core = DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION1, u64::MAX);
+
+    // First resume with registers set to pattern A
+    let mut regs1 = [0u64; 33];
+    regs1[1] = 0xAAAA;
+    let snapshot1 = Snapshot2 {
+        pages_from_source: vec![],
+        dirty_pages: vec![(0x10000, 0, vec![0xAA; 4096])],
+        version: VERSION1,
+        registers: regs1,
+        pc: 0x100,
+        cycles: 10,
+        max_cycles: 500,
+        load_reservation_address: 0,
+    };
+    ctx.resume(&mut core, &snapshot1).unwrap();
+    assert_eq!(core.registers()[1].to_u64(), 0xAAAA);
+    assert_eq!(core.memory_mut().load8(&(0x10000u64)).unwrap(), 0xAA);
+
+    // Second resume with registers set to pattern B (should fully overwrite)
+    let mut regs2 = [0u64; 33];
+    regs2[1] = 0xBBBB;
+    let snapshot2 = Snapshot2 {
+        pages_from_source: vec![],
+        dirty_pages: vec![(0x20000, 0, vec![0xBB; 4096])],
+        version: VERSION1,
+        registers: regs2,
+        pc: 0x200,
+        cycles: 20,
+        max_cycles: 1000,
+        load_reservation_address: 0x1234,
+    };
+    ctx.resume(&mut core, &snapshot2).unwrap();
+
+    // State should reflect the second resume
+    assert_eq!(core.registers()[1].to_u64(), 0xBBBB);
+    assert_eq!(core.pc().to_u64(), 0x200);
+    assert_eq!(core.cycles(), 20);
+    assert_eq!(core.max_cycles(), 1000);
+    assert_eq!(core.memory_mut().load8(&(0x20000u64)).unwrap(), 0xBB);
+
+    // The first dirty page may still have old data in memory (resume doesn't clear old memory)
+    // but the snapshot context should be reset
+}
+
+#[test]
+pub fn test_snapshot2_resume_and_make_snapshot_roundtrip() {
+    let source = MockDataSource {
+        data: Bytes::from(vec![0u8; 8192]),
+    };
+    let mut ctx = Snapshot2Context::new(source);
+    let mut core = DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION1, u64::MAX);
+
+    let mut registers = [0u64; 33];
+    registers[1] = 0x1234;
+    registers[10] = 0x5678;
+
+    let snapshot = Snapshot2 {
+        pages_from_source: vec![],
+        dirty_pages: vec![],
+        version: VERSION1,
+        registers,
+        pc: 0x8000,
+        cycles: 100,
+        max_cycles: 1000,
+        load_reservation_address: 0xAAAA,
+    };
+
+    ctx.resume(&mut core, &snapshot).unwrap();
+    let snapshot2 = ctx.make_snapshot(&mut core).unwrap();
+
+    assert_eq!(snapshot2.registers[1], 0x1234);
+    assert_eq!(snapshot2.registers[10], 0x5678);
+    assert_eq!(snapshot2.pc, 0x8000);
+    assert_eq!(snapshot2.cycles, 100);
+    assert_eq!(snapshot2.max_cycles, 1000);
+    assert_eq!(snapshot2.load_reservation_address, 0xAAAA);
+}
+
+#[test]
+pub fn test_snapshot2_resume_with_source_data_at_nonzero_offset() {
+    let mut data = vec![0u8; 8192];
+    for i in 0..data.len() {
+        data[i] = (i & 0xFF) as u8;
+    }
+    let source = MockDataSource {
+        data: Bytes::from(data),
+    };
+    let mut ctx = Snapshot2Context::new(source);
+    let mut core = DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION1, u64::MAX);
+
+    // Load from offset 4096 (second page of data)
+    let snapshot = Snapshot2 {
+        pages_from_source: vec![(0x10000, 0, 1, 4096, 4096)],
+        dirty_pages: vec![],
+        version: VERSION1,
+        registers: [0u64; 33],
+        pc: 0,
+        cycles: 0,
+        max_cycles: u64::MAX,
+        load_reservation_address: 0,
+    };
+
+    ctx.resume(&mut core, &snapshot).unwrap();
+
+    // Verify the data at offset 4096 was loaded
+    let first_byte = core.memory_mut().load8(&(0x10000u64)).unwrap();
+    assert_eq!(first_byte, 0x00); // 4096 & 0xFF = 0
+    let second_byte = core.memory_mut().load8(&(0x10001u64)).unwrap();
+    assert_eq!(second_byte, 0x01); // 4097 & 0xFF = 1
+}
+
+#[test]
+pub fn test_snapshot2_resume_with_both_source_and_dirty_pages() {
+    let source = MockDataSource {
+        data: Bytes::from(vec![0xDD; 8192]),
+    };
+    let mut ctx = Snapshot2Context::new(source);
+    let mut core = DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION1, u64::MAX);
+
+    let snapshot = Snapshot2 {
+        pages_from_source: vec![(0x10000, 0, 1, 0, 4096)],
+        dirty_pages: vec![(0x20000, 0, vec![0xEE; 4096])],
+        version: VERSION1,
+        registers: [0u64; 33],
+        pc: 0,
+        cycles: 0,
+        max_cycles: u64::MAX,
+        load_reservation_address: 0,
+    };
+
+    ctx.resume(&mut core, &snapshot).unwrap();
+
+    // Both source page and dirty page should be loaded
+    assert_eq!(core.memory_mut().load8(&(0x10000u64)).unwrap(), 0xDD);
+    assert_eq!(core.memory_mut().load8(&(0x20000u64)).unwrap(), 0xEE);
+}
+
+#[test]
+pub fn test_snapshot2_resume_with_version2() {
+    let source = MockDataSource {
+        data: Bytes::from(vec![0u8; 4096]),
+    };
+    let mut ctx = Snapshot2Context::new(source);
+    let mut core = DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION2, u64::MAX);
+
+    let snapshot = Snapshot2 {
+        pages_from_source: vec![],
+        dirty_pages: vec![],
+        version: VERSION2,
+        registers: [0u64; 33],
+        pc: 0,
+        cycles: 0,
+        max_cycles: u64::MAX,
+        load_reservation_address: 0,
+    };
+
+    let result = ctx.resume(&mut core, &snapshot);
+    assert!(result.is_ok());
+}
+
+#[test]
+pub fn test_snapshot2_resume_version2_machine_version1_snapshot_fails() {
+    let source = MockDataSource {
+        data: Bytes::from(vec![0u8; 4096]),
+    };
+    let mut ctx = Snapshot2Context::new(source);
+    let mut core = DefaultCoreMachine::<u64, SparseMemory<u64>>::new(ISA_IMC, VERSION2, u64::MAX);
+
+    let snapshot = Snapshot2 {
+        pages_from_source: vec![],
+        dirty_pages: vec![],
+        version: VERSION1,
+        registers: [0u64; 33],
+        pc: 0,
+        cycles: 0,
+        max_cycles: u64::MAX,
+        load_reservation_address: 0,
+    };
+
+    let result = ctx.resume(&mut core, &snapshot);
+    assert!(result.is_err());
+    assert_eq!(result.unwrap_err(), Error::InvalidVersion);
 }
